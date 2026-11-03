@@ -1,0 +1,562 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>[hidden]{display:none!important}img{max-width:100%}</style>
+<title>Cap Gallery</title>
+<style>
+  /* Layout: nothing but the cap on white, a small logo on top. At the foot: the name, Cap/Scarf, colour dots. "+" (add to cart) and Order (open the cart) at the right edge.
+     Single light look on purpose: the caps are shot and lit for white. */
+  :root {
+    --paper: #ffffff;
+    --ink: #000000;
+    --ink-soft: #8a8a8a;
+    --focus: #000000;
+    --type: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    color-scheme: light;
+  }
+  html, body { height: 100%; }
+  body { margin: 0; background: var(--paper); color: var(--ink); overflow: hidden; font: 400 11px/1.3 var(--type); letter-spacing: .04em; text-transform: uppercase; }
+
+  canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; cursor: grab; touch-action: none; }
+  canvas.dragging { cursor: grabbing; }
+
+  .note {
+    position: fixed; inset: 0; display: grid; place-items: center; pointer-events: none; color: var(--ink-soft);
+    visibility: hidden;
+  }
+  .note.on { visibility: visible; }
+
+  .foot {
+    position: fixed; left: 0; right: 0; bottom: 0;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-bottom: calc(22px + env(safe-area-inset-bottom, 0px));
+    display: grid; grid-template-columns: 1fr auto 1fr; justify-items: center; row-gap: 12px; pointer-events: none;
+  }
+  .name { grid-column: 2; margin: 0; text-align: center; transition: opacity .35s ease; }
+  .name.out { opacity: 0; }
+  /* one dot per cap: its main colour and its trim, split on the diagonal */
+  .picker { grid-column: 2; display: grid; justify-items: center; gap: 10px; pointer-events: auto; }
+  .kinds { display: flex; gap: 18px; }
+  .kind { padding: 4px 0; border: 0; background: none; font: inherit; letter-spacing: inherit; text-transform: inherit; color: var(--ink-soft); cursor: pointer; transition: color .2s ease; }
+  .kind:hover, .kind[aria-selected="true"] { color: var(--ink); }
+  .kind[aria-selected="true"] { text-decoration: underline; text-underline-offset: 4px; text-decoration-thickness: 1px; }
+  .swatches { display: flex; align-items: center; gap: 4px; min-height: 26px; }
+  .dot {
+    width: 26px; height: 26px; padding: 0; border: 0; background: none; cursor: pointer; display: grid; place-items: center; border-radius: 50%;
+  }
+  .dot i {
+    width: 13px; height: 13px; border-radius: 50%; display: block;
+    background: linear-gradient(135deg, var(--a) 50%, var(--b) 50%);
+    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .12), 0 0 0 0 var(--ink);
+    transition: box-shadow .2s ease, transform .2s ease;
+  }
+  .dot[hidden] { display: none; }
+  .dot:hover i { transform: scale(1.12); }
+  .dot[aria-checked="true"] i { box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .12), 0 0 0 2px var(--paper), 0 0 0 3px var(--ink); }
+  .logo {
+    position: fixed; top: calc(18px + env(safe-area-inset-top, 0px)); left: 50%; transform: translateX(-50%);
+    height: 30px; width: auto; pointer-events: none; user-select: none;
+  }
+
+  /* "+" and ORDER: a pair of black-and-white blocks at the right edge, level with the cap */
+  .buy {
+    position: fixed; top: 50%; right: max(28px, env(safe-area-inset-right, 0px)); transform: translateY(-50%);
+    display: flex; gap: 8px;
+  }
+  .buy button { font: inherit; font-size: 12px; letter-spacing: .16em; text-transform: inherit; cursor: pointer; transition: opacity .2s ease, background .2s ease, color .2s ease; }
+  .add { width: 52px; padding: 0; border: 1px solid var(--ink); background: var(--paper); color: var(--ink); font-size: 18px !important; letter-spacing: 0 !important; }
+  .add:hover { background: var(--ink); color: var(--paper); }
+  .order { width: 168px; padding: 17px 0; border: 0; background: var(--ink); color: var(--paper); }
+  .order:hover { opacity: .82; }
+  .order .n { margin-left: .6em; opacity: .6; font-variant-numeric: tabular-nums; }
+
+  /* cart: a drawer from the right over a pale veil */
+  .veil { position: fixed; inset: 0; background: rgba(255, 255, 255, .6); z-index: 5; }
+  .veil[hidden], .drawer[hidden] { display: none; }
+  .drawer {
+    position: fixed; top: 0; right: 0; bottom: 0; z-index: 6; width: min(380px, 100%); box-sizing: border-box;
+    padding: calc(18px + env(safe-area-inset-top, 0px)) max(20px, env(safe-area-inset-right, 0px)) calc(22px + env(safe-area-inset-bottom, 0px)) 20px;
+    background: var(--paper); border-left: 1px solid #e8e8e8; display: grid; grid-template-rows: auto 1fr auto; gap: 18px;
+  }
+  .drawer .row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .drawer .plain { padding: 4px 0; border: 0; background: none; font: inherit; letter-spacing: inherit; text-transform: inherit; color: var(--ink-soft); cursor: pointer; }
+  .drawer .plain:hover { color: var(--ink); }
+  .lines { list-style: none; margin: 0; padding: 0; overflow-y: auto; display: grid; align-content: start; }
+  .lines li { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px; padding: 14px 0; border-top: 1px solid #efefef; }
+  .lines li:last-child { border-bottom: 1px solid #efefef; }
+  .lines .swatch { width: 11px; height: 11px; border-radius: 50%; background: linear-gradient(135deg, var(--a) 50%, var(--b) 50%); box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .12); }
+  .lines .what { display: grid; gap: 3px; min-width: 0; }
+  .lines .what .plain { justify-self: start; font-size: 10px; }
+  .soft { color: var(--ink-soft); }
+  .qty { display: flex; align-items: center; gap: 12px; font-variant-numeric: tabular-nums; }
+  .qty button { width: 22px; height: 22px; padding: 0; border: 1px solid #e5e5e5; background: none; font: inherit; cursor: pointer; }
+  .empty { margin: 0; color: var(--ink-soft); }
+  .checkout { width: 100%; padding: 16px 0; border: 0; background: var(--ink); color: var(--paper); font: inherit; font-size: 12px; letter-spacing: .16em; text-transform: inherit; opacity: .35; }
+
+  @media (max-width: 720px) {
+    .logo { height: 24px; }
+    .foot { grid-template-columns: 1fr; padding-bottom: calc(94px + env(safe-area-inset-bottom, 0px)); }
+    .name, .picker { grid-column: 1; }
+    .buy {
+      top: auto; transform: none; left: max(16px, env(safe-area-inset-left, 0px)); right: max(16px, env(safe-area-inset-right, 0px));
+      bottom: calc(22px + env(safe-area-inset-bottom, 0px));
+    }
+    .order { flex: 1; width: auto; }
+  }
+  button:focus-visible { outline: 1px solid var(--focus); outline-offset: -6px; }
+
+  @media (prefers-reduced-motion: reduce) { .name { transition: none; } }
+</style>
+</head>
+<body>
+<canvas id="scene" aria-label="3D cap model, drag to turn it"></canvas>
+<img class="logo" src="logo.png" alt="ZHAN">
+<div class="note on" id="note"><span>Loading</span></div>
+
+
+<div class="foot">
+  <p class="name" id="name" aria-live="polite">&nbsp;</p>
+  <div class="picker">
+    <div class="kinds" id="kinds" role="tablist" aria-label="Style"></div>
+    <div class="swatches" id="swatches" role="radiogroup" aria-label="Colour"></div>
+  </div>
+</div>
+<p id="spec" hidden></p>
+
+<div class="buy">
+  <button class="add" id="add" type="button" aria-label="Add to cart">+</button>
+  <button class="order" id="order" type="button" aria-label="Open cart">Order<span class="n" id="order-n"></span></button>
+</div>
+
+<div class="veil" id="veil" hidden></div>
+<aside class="drawer" id="drawer" role="dialog" aria-modal="true" aria-labelledby="cart-title" hidden>
+  <div class="row"><span id="cart-title">Cart</span><button class="plain" id="cart-close" type="button">Close</button></div>
+  <ul class="lines" id="lines"></ul>
+  <div style="display: grid; gap: 14px;">
+    <div class="row"><span class="soft">Items</span><span id="cart-count">0</span></div>
+    <button class="checkout" type="button" disabled>Checkout soon</button>
+  </div>
+</aside>
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+<script type="module">
+  import * as THREE from "three";
+  import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+  import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
+
+  // Each cap: its model file (base64 GLB, since the host doesn't serve .glb) and how to face it forward.
+  const FRONT = -Math.PI / 2; // the generated meshes come out facing +x
+  const CAPS = [
+    { file: "models/blue_std.js", colors: ["#2b36a0", "#c8a35a"], group: "cap", name: "Royal Blue", spec: "59FIFTY · navy and gold lace · simkas0.0" },
+    { file: "models/cream.js", colors: ["#ebe7dc", "#141414"], group: "cap",  name: "Cream", spec: "59FIFTY · black lace, beads · Yankees", cut: [[0.52, -0.066, -0.35, 1, 0.3, 0.35]] },
+    { file: "models/black.js", colors: ["#141414", "#efe9da"], group: "cap",  name: "Black", spec: "59FIFTY · white lace, pearls · Laura 17", cut: [[0.52, -0.066, -0.35, 1, 0.3, 0.35], [0.56, -0.25, -0.35, 1, -0.066, 0.35]] },
+    { file: "models/grey.js", colors: ["#b9babd", "#a8c3dc"], group: "cap",   name: "Grey", spec: "59FIFTY · pale blue lace, pearls" },
+    { file: "models/pink.js", colors: ["#f2a6c8", "#dcdcdc"], group: "cap",   name: "Pink", spec: "9FORTY · rhinestones, distressed brim" },
+    { file: "models/navy.js", colors: ["#1f2a44", "#e9e1cc"], group: "cap",   name: "Navy", spec: "9FORTY · white lace, pearls" },
+    { file: "models/scarf_bw.js", colors: ["#1b1b1b", "#bdbdbd"], group: "scarf",     name: "Black Paisley", spec: "Cap with silk scarf · rhinestones" },
+    { file: "models/scarf_olive.js", colors: ["#55682f", "#e0a23a"], group: "scarf",  name: "Olive", spec: "Cap with satin scarf · rhinestone NY" },
+    { file: "models/scarf_gold.js", colors: ["#151515", "#c99a3a"], group: "scarf",   name: "Black Gold", spec: "Cap with satin scarf · rhinestones" },
+    { file: "models/scarf_navy.js", colors: ["#1d2b5a", "#eeeeee"], group: "scarf",   name: "Navy Paisley", spec: "Cap with scarf · rhinestone drops" },
+    { file: "models/scarf_silver.js", colors: ["#eeeeee", "#1b1b1b"], group: "scarf", name: "Silver", spec: "Cap with satin scarf · pearls" },
+  ].map((c) => ({ yaw: FRONT, mirror: false, ...c }));
+
+  const canvas = document.getElementById("scene");
+  const note = document.getElementById("note");
+  const meta = document.getElementById("name"); // the line that fades while a cap loads
+  const nameEl = document.getElementById("name");
+  const specEl = document.getElementById("spec");
+  const swatchesEl = document.getElementById("swatches");
+
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.setClearColor(0xffffff, 1);
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  renderer.toneMapping = THREE.LinearToneMapping; // what three r160 fell back to all along
+  renderer.toneMappingExposure = 0.95;
+
+  const scene = new THREE.Scene();
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  scene.environment = pmrem.fromScene(new RoomEnvironment(renderer), 0.04).texture;
+  const key = new THREE.DirectionalLight(0xffffff, 1.1);
+  key.position.set(2, 3, 4);
+  scene.add(key, new THREE.HemisphereLight(0xffffff, 0xdfe4e2, 0.5));
+
+  const camera = new THREE.PerspectiveCamera(30, 1, 0.01, 100);
+  camera.lookAt(0, 0, 0);
+
+  const pivot = new THREE.Group();
+  pivot.position.y = 0.06; // a hair above centre, clear of the line of type at the foot
+  scene.add(pivot);
+
+  // ---- model loading: one script at a time, since each file sets the same global ----
+  const cache = new Map();
+  let queue = Promise.resolve();
+  function loadCap(i) {
+    if (cache.has(i)) return cache.get(i);
+    const p = (queue = queue.then(() => new Promise((resolve, reject) => {
+      const tag = document.createElement("script");
+      tag.src = CAPS[i].file;
+      tag.onload = () => {
+        const bin = atob(window.CAP_GLB_B64);
+        delete window.CAP_GLB_B64;
+        const buf = new Uint8Array(bin.length);
+        for (let k = 0; k < bin.length; k++) buf[k] = bin.charCodeAt(k);
+        new GLTFLoader().parse(buf.buffer, "", (gltf) => resolve(prepare(gltf.scene, CAPS[i])), reject);
+      };
+      tag.onerror = reject;
+      document.head.appendChild(tag);
+    })));
+    cache.set(i, p);
+    p.catch(() => cache.delete(i));
+    return p;
+  }
+
+  function prepare(model, cap) {
+    if (cap.mirror) model.scale.x *= -1;
+    // Fabric, not metal: generators often ship metalness 1, which washes the colours out
+    model.traverse((o) => {
+      if (!o.isMesh) return;
+      const m = o.material;
+      m.metalness = 0;
+      m.metalnessMap = null;
+      m.roughness = 0.9;
+      m.envMapIntensity = 0.55;
+      m.needsUpdate = true;
+    });
+    const box = new THREE.Box3().setFromObject(model);
+    const size = box.getSize(new THREE.Vector3());
+    model.position.sub(box.getCenter(new THREE.Vector3()));
+    const holder = new THREE.Group();
+    holder.add(model);
+    // wide caps fit by footprint; the tall scarf ones by height, so they clear the caption
+    holder.scale.setScalar(Math.min(1.7 / Math.max(size.x, size.z), 1.4 / size.y));
+    if (cap.cut) cutAway(holder, cap.cut);
+    holder.rotation.y = cap.yaw;
+    addDissolve(holder);
+    return holder;
+  }
+
+  // Remove stray bits the generator left floating beside a cap: every triangle whose centre
+  // falls inside one of the boxes [x0, y0, z0, x1, y1, z1], given in the fitted, unrotated cap space.
+  function cutAway(holder, boxes) {
+    holder.updateMatrixWorld(true);
+    const a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3();
+    holder.traverse((o) => {
+      if (!o.isMesh || !o.geometry.index) return;
+      const pos = o.geometry.attributes.position, idx = o.geometry.index.array, keep = [];
+      for (let t = 0; t < idx.length; t += 3) {
+        a.fromBufferAttribute(pos, idx[t]); b.fromBufferAttribute(pos, idx[t + 1]); c.fromBufferAttribute(pos, idx[t + 2]);
+        a.add(b).add(c).divideScalar(3).applyMatrix4(o.matrixWorld);
+        const inside = boxes.some(([x0, y0, z0, x1, y1, z1]) =>
+          a.x > x0 && a.x < x1 && a.y > y0 && a.y < y1 && a.z > z0 && a.z < z1);
+        if (!inside) keep.push(idx[t], idx[t + 1], idx[t + 2]);
+      }
+      o.geometry.setIndex(keep);
+    });
+  }
+
+  // ---- swap: the old cap eats away in ragged patches from one side while the new one fills in ----
+  // Each cap's material gets a dissolve step. mode 0 = whole, 1 = going (gone where the front has passed),
+  // 2 = coming (shown only where the front has passed). The front runs across the screen with noise on it.
+  function addDissolve(holder) {
+    const u = { uProg: { value: 0 }, uDir: { value: 1 }, uMode: { value: 0 } };
+    holder.userData.dissolve = u;
+    holder.traverse((o) => {
+      if (!o.isMesh) return;
+      const m = o.material;
+      m.customProgramCacheKey = () => "dissolve";
+      m.onBeforeCompile = (sh) => {
+        Object.assign(sh.uniforms, u);
+        sh.vertexShader = sh.vertexShader
+          .replace("#include <common>", "#include <common>\nvarying vec3 vDisWorld;\nvarying float vDisX;")
+          .replace("#include <project_vertex>", "#include <project_vertex>\nvDisWorld = (modelMatrix * vec4(transformed, 1.0)).xyz;\nvDisX = mvPosition.x;");
+        sh.fragmentShader = sh.fragmentShader
+          .replace("#include <common>", `#include <common>
+            varying vec3 vDisWorld;
+            varying float vDisX;
+            uniform float uProg, uDir, uMode;
+            float disHash(vec3 p) { return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453); }
+            float disNoise(vec3 p) {
+              vec3 i = floor(p), f = fract(p);
+              f = f * f * (3.0 - 2.0 * f);
+              return mix(mix(mix(disHash(i), disHash(i + vec3(1, 0, 0)), f.x), mix(disHash(i + vec3(0, 1, 0)), disHash(i + vec3(1, 1, 0)), f.x), f.y),
+                         mix(mix(disHash(i + vec3(0, 0, 1)), disHash(i + vec3(1, 0, 1)), f.x), mix(disHash(i + vec3(0, 1, 1)), disHash(i + vec3(1, 1, 1)), f.x), f.y), f.z);
+            }
+            // 0 at the side the change starts from, 1 at the far side, roughened by patches stuck to the surface
+            float disField() {
+              float across = clamp((uDir * vDisX + 1.1) / 2.2, 0.0, 1.0);
+              float n = disNoise(vDisWorld * 5.0) * 0.65 + disNoise(vDisWorld * 13.0) * 0.35;
+              return across * 0.7 + n * 0.3;
+            }`)
+          .replace("#include <clipping_planes_fragment>", `#include <clipping_planes_fragment>
+            float disF = disField();
+            if (uMode > 0.5 && uMode < 1.5 && disF < uProg) discard;
+            if (uMode > 1.5 && disF >= uProg) discard;`)
+          ;
+      };
+      m.needsUpdate = true;
+    });
+  }
+
+  // ---- switching ----
+  // dir 1 = next (the change starts at the left), -1 = previous (starts at the right)
+  let index = 0, current = null, swap = null, token = 0;
+
+  function endSwap() {
+    if (!swap) return;
+    if (swap.from) { swap.from.userData.dissolve.uMode.value = 0; pivot.remove(swap.from); }
+    swap.to.userData.dissolve.uMode.value = 0;
+    swap = null;
+  }
+
+  async function show(i, dir = 1) {
+    index = (i + CAPS.length) % CAPS.length;
+    const my = ++token;
+    meta.classList.add("out");
+    syncPicker();
+    const ready = cache.has(index);
+    if (!ready) note.classList.add("on");
+    let holder;
+    try { holder = await loadCap(index); }
+    catch {
+      if (my === token) {
+        note.firstChild.textContent = "Couldn’t load. Refresh the page";
+      }
+      return;
+    }
+    if (my !== token) return;
+    note.classList.remove("on");
+    nameEl.textContent = CAPS[index].name;
+    specEl.textContent = CAPS[index].spec;
+    meta.classList.remove("out");
+    // warm the neighbours quietly
+    if (CAPS.length > 1) {
+      loadCap((index + 1) % CAPS.length).catch(() => {});
+      loadCap((index - 1 + CAPS.length) % CAPS.length).catch(() => {});
+    }
+    // Fast switching: finish any swap still running, so at most two caps are ever on stage
+    endSwap();
+    for (const c of [...pivot.children]) if (c !== current) pivot.remove(c);
+    if (holder === current) return;
+    const from = current;
+    pivot.add(holder);
+    current = holder;
+    if (!from) return;
+    if (still) { pivot.remove(from); return; }
+    for (const [cap, mode] of [[from, 1], [holder, 2]]) {
+      const u = cap.userData.dissolve;
+      u.uMode.value = mode; u.uDir.value = dir; u.uProg.value = -0.05;
+    }
+    swap = { from, to: holder, start: performance.now() };
+    // turn to face the front while one cap gives way to the other, then rest there
+    mode = "turn";
+    const front = Math.round(yaw / (2 * Math.PI)) * 2 * Math.PI;
+    seg = { from: yaw, to: front, fromTilt: tilt, start: performance.now(), dur: SWAP };
+  }
+
+  // Two kinds, each with its own colour dots; only the chosen kind's dots are on show.
+  const KINDS = [["cap", "Cap"], ["scarf", "Scarf"]];
+  const kindsEl = document.getElementById("kinds");
+  const lastOf = {};             // the colour last picked in each kind, so going back returns to it
+  let kind = CAPS[0].group;
+  const tabs = KINDS.map(([id, label]) => {
+    const t = document.createElement("button");
+    t.type = "button"; t.className = "kind"; t.id = `kind-${id}`; t.textContent = label;
+    t.setAttribute("role", "tab");
+    t.addEventListener("click", () => {
+      if (id === kind) return;
+      const k = lastOf[id] ?? CAPS.findIndex((c) => c.group === id);
+      show(k, k > index ? 1 : -1);
+    });
+    kindsEl.append(t);
+    return t;
+  });
+  const dots = CAPS.map((c, k) => {
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "dot"; b.id = `cap-${k}`;
+    b.setAttribute("role", "radio"); b.setAttribute("aria-checked", "false");
+    b.setAttribute("aria-label", c.name); b.title = c.name;
+    b.style.setProperty("--a", c.colors[0]); b.style.setProperty("--b", c.colors[1]);
+    b.append(document.createElement("i"));
+    b.addEventListener("click", () => { if (k !== index) show(k, k > index ? 1 : -1); });
+    swatchesEl.append(b);
+    return b;
+  });
+  function syncPicker() {
+    kind = CAPS[index].group;
+    lastOf[kind] = index;
+    tabs.forEach((t, k) => t.setAttribute("aria-selected", String(KINDS[k][0] === kind)));
+    dots.forEach((d, k) => { d.hidden = CAPS[k].group !== kind; d.setAttribute("aria-checked", String(k === index)); });
+  }
+  // keys and taps step through the colours of the kind on show
+  function step(delta) {
+    const same = CAPS.map((c, k) => k).filter((k) => CAPS[k].group === kind);
+    const at = same.indexOf(index);
+    show(same[(at + delta + same.length) % same.length], delta);
+  }
+  addEventListener("keydown", (e) => {
+    if (!drawer.hidden) { if (e.key === "Escape") closeCart(); return; }
+    if (e.key === "ArrowLeft") step(-1);
+    if (e.key === "ArrowRight") step(1);
+  });
+
+  // ---- cart: ORDER puts the cap on stage in it; kept in this browser only; checkout is not wired up yet ----
+  const veil = document.getElementById("veil"), drawer = document.getElementById("drawer");
+  const linesEl = document.getElementById("lines"), orderEl = document.getElementById("order"), addEl = document.getElementById("add");
+  let cart = [];                 // [{ file, qty }], keyed by model file so it survives reordering CAPS
+  try { cart = JSON.parse(localStorage.getItem("zhan-cart") || "[]").filter((l) => CAPS.some((c) => c.file === l.file)); } catch { cart = []; }
+  const save = () => { try { localStorage.setItem("zhan-cart", JSON.stringify(cart)); } catch {} };
+  const total = () => cart.reduce((n, l) => n + l.qty, 0);
+
+  function renderCart() {
+    const n = total();
+    document.getElementById("order-n").textContent = n ? n : "";
+    document.getElementById("cart-count").textContent = n;
+    orderEl.setAttribute("aria-label", `Open cart, ${n} item${n === 1 ? "" : "s"}`);
+    linesEl.replaceChildren();
+    if (!cart.length) {
+      const li = document.createElement("li");
+      li.style.gridTemplateColumns = "1fr";
+      const p = document.createElement("p");
+      p.className = "empty"; p.textContent = "Your cart is empty";
+      li.append(p);
+      linesEl.append(li);
+      return;
+    }
+    cart.forEach((line) => {
+      const c = CAPS.find((x) => x.file === line.file);
+      const li = document.createElement("li");
+      const sw = document.createElement("span");
+      sw.className = "swatch"; sw.style.setProperty("--a", c.colors[0]); sw.style.setProperty("--b", c.colors[1]);
+      const what = document.createElement("span");
+      what.className = "what";
+      const nm = document.createElement("span"); nm.textContent = c.name;
+      const kd = document.createElement("span"); kd.className = "soft"; kd.textContent = KINDS.find(([id]) => id === c.group)[1];
+      const rm = document.createElement("button"); rm.type = "button"; rm.className = "plain"; rm.textContent = "Remove";
+      rm.addEventListener("click", () => { cart = cart.filter((l) => l !== line); save(); renderCart(); });
+      what.append(nm, kd, rm);
+      const q = document.createElement("span"); q.className = "qty";
+      const less = document.createElement("button"); less.type = "button"; less.textContent = "−"; less.setAttribute("aria-label", `One less ${c.name}`);
+      const num = document.createElement("span"); num.textContent = line.qty;
+      const more = document.createElement("button"); more.type = "button"; more.textContent = "+"; more.setAttribute("aria-label", `One more ${c.name}`);
+      less.addEventListener("click", () => { line.qty -= 1; if (line.qty < 1) cart = cart.filter((l) => l !== line); save(); renderCart(); });
+      more.addEventListener("click", () => { line.qty = Math.min(20, line.qty + 1); save(); renderCart(); });
+      q.append(less, num, more);
+      li.append(sw, what, q);
+      linesEl.append(li);
+    });
+  }
+
+  let addedTimer = 0;
+  addEl.addEventListener("click", () => {
+    const file = CAPS[index].file;
+    const line = cart.find((l) => l.file === file);
+    if (line) line.qty = Math.min(20, line.qty + 1); else cart.push({ file, qty: 1 });
+    save(); renderCart();
+    // the plus answers with a tick for a moment
+    addEl.textContent = "\u2713";
+    clearTimeout(addedTimer);
+    addedTimer = setTimeout(() => { addEl.textContent = "+"; }, 900);
+  });
+  function openCart() { veil.hidden = false; drawer.hidden = false; document.getElementById("cart-close").focus(); }
+  function closeCart() { veil.hidden = true; drawer.hidden = true; orderEl.focus(); }
+  orderEl.addEventListener("click", openCart);
+  document.getElementById("cart-close").addEventListener("click", closeCart);
+  veil.addEventListener("click", closeCart);
+  renderCart();
+
+  function resize() {
+    const w = innerWidth, h = innerHeight;
+    renderer.setSize(w, h, false);
+    camera.aspect = w / h;
+    // Keep the cap fully in frame on narrow screens
+    const z = camera.aspect < 1 ? 4.4 / Math.max(camera.aspect, 0.55) : 4.4;
+    camera.position.set(0, 0.35, z);
+    camera.lookAt(0, 0, 0);
+    camera.updateProjectionMatrix();
+  }
+  addEventListener("resize", resize);
+  resize();
+
+  // The cap rests facing front and only moves when dragged (or when it turns to face front on a switch).
+  const SWAP = 2;
+  const ease = (t) => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+  const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  let yaw = 0, tilt = 0;
+  let mode = "rest";            // rest | drag | coast | turn
+  let seg = null;
+  let vel = 0, lastX = 0, lastY = 0, lastMove = 0, downX = 0, downY = 0, downAt = 0;
+
+  canvas.addEventListener("pointerdown", (e) => {
+    mode = "drag";
+    canvas.setPointerCapture(e.pointerId);
+    canvas.classList.add("dragging");
+    lastX = downX = e.clientX; lastY = downY = e.clientY; lastMove = downAt = performance.now(); vel = 0;
+  });
+  canvas.addEventListener("pointermove", (e) => {
+    if (mode !== "drag") return;
+    const now = performance.now();
+    const dx = e.clientX - lastX, dy = e.clientY - lastY;
+    const k = 6 / Math.min(innerWidth, 900);
+    yaw += dx * k;
+    // Look from above freely; barely from below, where the lining is rough
+    tilt = Math.max(-0.1, Math.min(0.5, tilt + dy * k * 0.6));
+    vel = (dx * k) / Math.max(1, now - lastMove) * 16;
+    lastX = e.clientX; lastY = e.clientY; lastMove = now;
+  });
+  const release = (e) => {
+    if (mode !== "drag") return;
+    mode = "coast";
+    canvas.classList.remove("dragging");
+    if (performance.now() - lastMove > 80) vel = 0;
+    // a tap rather than a drag: left half goes back, right half goes on
+    const tap = e.type === "pointerup" && Math.hypot(e.clientX - downX, e.clientY - downY) < 6 && performance.now() - downAt < 350;
+    if (tap) { vel = 0; step(e.clientX < innerWidth / 2 ? -1 : 1); }
+  };
+  canvas.addEventListener("pointerup", release);
+  canvas.addEventListener("pointercancel", release);
+
+  let prev = performance.now();
+  function frame(now) {
+    const dt = Math.min(0.05, (now - prev) / 1000);
+    prev = now;
+
+    if (swap) {
+      const p = Math.min(1, (now - swap.start) / 1000 / SWAP);
+      const prog = -0.05 + 1.1 * (p < 0.5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2);
+      swap.from.userData.dissolve.uProg.value = prog;
+      swap.to.userData.dissolve.uProg.value = prog;
+      if (p >= 1) endSwap();
+    }
+
+    if (mode === "coast") {
+      yaw += vel;
+      vel *= Math.exp(-dt * 4);
+      // once the flick dies down the cap simply stays where it was left
+      if (Math.abs(vel) < 0.0005) { vel = 0; mode = "rest"; }
+    } else if (mode === "turn") {
+      const p = still ? 1 : Math.min(1, (now - seg.start) / 1000 / seg.dur);
+      const e = ease(p);
+      yaw = seg.from + (seg.to - seg.from) * e;
+      tilt = seg.fromTilt * (1 - e);
+      if (p >= 1) mode = "rest";
+    }
+
+    pivot.rotation.set(tilt, yaw, 0);
+    renderer.render(scene, camera);
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+  show(0);
+</script>
+</body>
+</html>
