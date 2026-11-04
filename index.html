@@ -101,6 +101,10 @@
   .drawer { grid-template-rows: auto 1fr; }
   .lines .size { font: inherit; letter-spacing: inherit; text-transform: none; font-size: 11px; padding: 3px 4px; border: 1px solid #e5e5e5; background: var(--paper); color: var(--ink); justify-self: start; }
   .lines .size.missing { border-color: var(--ink); }
+  .units { display: grid; gap: 6px; padding-top: 2px; }
+  .unit { display: flex; align-items: center; gap: 8px; }
+  .unit .no { width: 1.4em; font-size: 10px; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+  .unit .size { font-size: 10px; padding: 2px 3px; }
   .link { justify-self: start; text-decoration: underline; text-underline-offset: 3px; }
   .hint { margin: 0; color: var(--ink); }
   .small { margin: 0; font-size: 10px; line-height: 1.5; text-transform: none; letter-spacing: .02em; }
@@ -522,12 +526,21 @@
   const veil = $("veil"), drawer = $("drawer");
   const linesEl = $("lines"), orderEl = $("order"), addEl = $("add");
   const steps = { cart: $("step-cart"), details: $("step-details"), done: $("step-done") };
-  let cart = [];                 // [{ file, qty, size }], keyed by model file so it survives reordering CAPS
+  let cart = [];                 // [{ file, qty, sizes }]: one size per unit, keyed by model file so it survives reordering CAPS
   try { cart = JSON.parse(localStorage.getItem("zhan-cart") || "[]").filter((l) => CAPS.some((c) => c.file === l.file)); } catch { cart = []; }
   const save = () => { try { localStorage.setItem("zhan-cart", JSON.stringify(cart)); } catch {} };
   const total = () => cart.reduce((n, l) => n + l.qty, 0);
   const capOf = (line) => CAPS.find((x) => x.file === line.file);
-  const missingSize = () => cart.some((l) => capOf(l).sized && !l.size);
+  // keep one size slot per unit; carts saved before sizes were per unit had a single `size`
+  function sizesOf(line) {
+    if (!Array.isArray(line.sizes)) line.sizes = line.size ? [line.size] : [];
+    delete line.size;
+    while (line.sizes.length < line.qty) line.sizes.push("");
+    line.sizes.length = line.qty;
+    return line.sizes;
+  }
+  cart.forEach(sizesOf);
+  const missingSize = () => cart.some((l) => capOf(l).sized && sizesOf(l).some((x) => !x));
 
   $("size-rows").append(...SIZES.map(([s, cm]) => {
     const tr = document.createElement("tr");
@@ -563,17 +576,34 @@
       const kd = document.createElement("span"); kd.className = "soft"; kd.textContent = KINDS.find(([id]) => id === c.group)[1];
       what.append(nm, kd);
       if (c.sized) {
-        const sel = document.createElement("select");
-        sel.className = "size" + (line.size ? "" : " missing");
-        sel.setAttribute("aria-label", `Size for ${c.name}`);
-        // the last entry opens the size guide instead of picking a size
-        sel.append(new Option("Size", ""), ...SIZES.map(([s, cm]) => new Option(`${s} · ${cm} cm`, s)), new Option("Size guide →", GUIDE));
-        sel.value = line.size || "";
-        sel.addEventListener("change", () => {
-          if (sel.value === GUIDE) { sel.value = line.size || ""; openGuide(sel); return; }
-          line.size = sel.value; save(); renderCart();
-        });
-        what.append(sel);
+        const sizes = sizesOf(line);
+        const pick = (k) => {
+          const sel = document.createElement("select");
+          sel.className = "size" + (sizes[k] ? "" : " missing");
+          sel.setAttribute("aria-label", line.qty > 1 ? `Size for ${c.name}, cap ${k + 1}` : `Size for ${c.name}`);
+          // the last entry opens the size guide instead of picking a size
+          sel.append(new Option("Size", ""), ...SIZES.map(([s, cm]) => new Option(`${s} · ${cm} cm`, s)), new Option("Size guide \u2192", GUIDE));
+          sel.value = sizes[k] || "";
+          sel.addEventListener("change", () => {
+            if (sel.value === GUIDE) { sel.value = sizes[k] || ""; openGuide(sel); return; }
+            sizes[k] = sel.value; save(); renderCart();
+          });
+          return sel;
+        };
+        if (line.qty === 1) what.append(pick(0));
+        else {
+          // several of one cap: a smaller numbered list, one size each
+          const units = document.createElement("span");
+          units.className = "units";
+          for (let k = 0; k < line.qty; k++) {
+            const row = document.createElement("span");
+            row.className = "unit";
+            const no = document.createElement("span"); no.className = "no"; no.textContent = k + 1;
+            row.append(no, pick(k));
+            units.append(row);
+          }
+          what.append(units);
+        }
       } else {
         const one = document.createElement("span"); one.className = "soft"; one.textContent = "Adjustable";
         what.append(one);
@@ -585,8 +615,8 @@
       const less = document.createElement("button"); less.type = "button"; less.textContent = "−"; less.setAttribute("aria-label", `One less ${c.name}`);
       const num = document.createElement("span"); num.textContent = line.qty;
       const more = document.createElement("button"); more.type = "button"; more.textContent = "+"; more.setAttribute("aria-label", `One more ${c.name}`);
-      less.addEventListener("click", () => { line.qty -= 1; if (line.qty < 1) cart = cart.filter((l) => l !== line); save(); renderCart(); });
-      more.addEventListener("click", () => { line.qty = Math.min(20, line.qty + 1); save(); renderCart(); });
+      less.addEventListener("click", () => { line.qty -= 1; if (line.qty < 1) cart = cart.filter((l) => l !== line); else sizesOf(line); save(); renderCart(); });
+      more.addEventListener("click", () => { line.qty = Math.min(20, line.qty + 1); sizesOf(line); save(); renderCart(); });
       q.append(less, num, more);
       li.append(sw, what, q);
       linesEl.append(li);
@@ -602,7 +632,7 @@
   addEl.addEventListener("click", () => {
     const file = CAPS[index].file;
     const line = cart.find((l) => l.file === file);
-    if (line) line.qty = Math.min(20, line.qty + 1); else cart.push({ file, qty: 1, size: "" });
+    if (line) { line.qty = Math.min(20, line.qty + 1); sizesOf(line); } else cart.push({ file, qty: 1, sizes: [""] });
     save(); renderCart();
     // the plus answers with a tick for a moment
     addEl.textContent = "✓";
@@ -678,7 +708,11 @@
     const lines = cart.map((l, i) => {
       const c = capOf(l);
       const kind = KINDS.find(([id]) => id === c.group)[1];
-      return `${i + 1}. ${c.name} (${kind}) · ${c.sized ? "size " + l.size : "adjustable"} · x${l.qty}`;
+      // sizes grouped, e.g. "sizes 7 x2, 7 1/8 x1"
+      const counts = {};
+      if (c.sized) for (const x of sizesOf(l)) counts[x] = (counts[x] || 0) + 1;
+      const sized = Object.entries(counts).map(([x, n]) => (l.qty > 1 ? `${x} x${n}` : x)).join(", ");
+      return `${i + 1}. ${c.name} (${kind}) · ${c.sized ? (l.qty > 1 ? "sizes " : "size ") + sized : "adjustable"} · x${l.qty}`;
     });
     return [
       "New order · ZHAN",
