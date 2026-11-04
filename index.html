@@ -828,11 +828,14 @@
     const lines = cart.map((l, i) => {
       const c = capOf(l);
       const kind = KINDS.find(([id]) => id === c.group)[1];
-      // sizes grouped, e.g. "sizes 7 x2, 7 1/8 x1"
+      const head = `${i + 1}. ${c.name} (${kind}) · x${l.qty}`;
+      if (!c.sized) return `${head}\n   adjustable`;
+      // one size per line, smallest first, with how many of each
       const counts = {};
-      if (c.sized) for (const x of sizesOf(l)) counts[x] = (counts[x] || 0) + 1;
-      const sized = Object.entries(counts).map(([x, n]) => (l.qty > 1 ? `${x} x${n}` : x)).join(", ");
-      return `${i + 1}. ${c.name} (${kind}) · ${c.sized ? (l.qty > 1 ? "sizes " : "size ") + sized : "adjustable"} · x${l.qty}`;
+      for (const x of sizesOf(l)) counts[x] = (counts[x] || 0) + 1;
+      const order = SIZES.map(([x]) => x);
+      const rows = Object.keys(counts).sort((a, b) => order.indexOf(a) - order.indexOf(b)).map((x) => `   ${x} — x${counts[x]}`);
+      return [head, ...rows].join("\n");
     });
     return [
       "New order · ZHAN",
