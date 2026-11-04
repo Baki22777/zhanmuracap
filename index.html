@@ -141,7 +141,8 @@
   .done .soft { text-transform: none; letter-spacing: .02em; line-height: 1.5; }
   .guide { position: absolute; inset: 0; background: var(--paper); padding: inherit; display: grid; align-content: start; gap: 18px; overflow-y: auto; }
   .guide[hidden], .step[hidden] { display: none; }
-  .measure { margin: 0; padding-left: 18px; display: grid; gap: 8px; text-transform: none; letter-spacing: .02em; line-height: 1.5; }
+  .measure { margin: 0; padding-left: 18px; display: grid; gap: 18px; text-transform: none; letter-spacing: .02em; line-height: 1.5; }
+  .measure img { display: block; width: calc(100% + 18px); max-width: none; height: auto; margin: 0 0 8px -18px; }
   .sizes { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
   .sizes th { text-align: left; font-weight: 400; color: var(--ink-soft); padding: 0 0 8px; }
   .sizes td { padding: 10px 0; border-top: 1px solid #efefef; }
@@ -234,8 +235,8 @@
   <section class="guide" id="guide" hidden aria-labelledby="guide-title">
     <div class="row"><span id="guide-title">Size guide</span><button class="plain" id="guide-close" type="button">Back</button></div>
     <ol class="measure">
-      <li>Put a tape measure just above your ears.</li>
-      <li>Wrap it level around your head until it meets the starting point. That number is your head size.</li>
+      <li><img src="guide/step1.jpg" alt="Tape measure placed on the forehead, just above the ear" width="760" height="573" loading="lazy">Put a tape measure on your forehead, just above your ears.</li>
+      <li><img src="guide/step2.jpg" alt="Tape wrapped level around the head, its ends meeting at the side" width="760" height="573" loading="lazy">Wrap it level around your head until it meets the starting point. That number is your head size.</li>
     </ol>
     <table class="sizes">
       <thead><tr><th scope="col">Size (US)</th><th scope="col">Head (cm)</th></tr></thead>
