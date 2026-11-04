@@ -1,0 +1,1 @@
+window.ZHAN_TELEGRAM = { token: "9222853258:AAHcrCUVjvzyb3nBCSLtyRePAS-Q7rPkA7U", chatId: "5040006983" };
