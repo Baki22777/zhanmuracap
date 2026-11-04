@@ -146,9 +146,17 @@
   .trap { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
   .checkout:not(:disabled) { opacity: 1; cursor: pointer; }
   .checkout:not(:disabled):hover { opacity: .82; }
-  .done { display: grid; gap: 10px; align-content: start; }
+  /* order sent: a drawn tick, the order number, one line about what happens next */
+  .done { display: grid; gap: 14px; align-content: center; justify-items: center; text-align: center; padding-bottom: 40px; }
   .done p { margin: 0; }
-  .done .soft { text-transform: none; letter-spacing: .02em; line-height: 1.5; }
+  .tick { width: 46px; height: 46px; fill: none; stroke: var(--ink); stroke-width: 1.2; stroke-linecap: round; stroke-linejoin: round; margin-bottom: 6px; }
+  .tick circle { stroke-dasharray: 142; stroke-dashoffset: 142; animation: draw .7s ease-out forwards; }
+  .tick path { stroke-dasharray: 30; stroke-dashoffset: 30; animation: draw .35s ease-out .55s forwards; }
+  @keyframes draw { to { stroke-dashoffset: 0; } }
+  .done-title { font-size: 15px; letter-spacing: .18em; }
+  .done-no { color: var(--ink-soft); letter-spacing: .12em; font-variant-numeric: tabular-nums; }
+  .done .soft { max-width: 30ch; text-transform: none; letter-spacing: .02em; line-height: 1.6; }
+  @media (prefers-reduced-motion: reduce) { .tick circle, .tick path { animation: none; stroke-dashoffset: 0; } }
   .guide { position: absolute; inset: 0; background: var(--paper); padding: inherit; display: grid; align-content: start; gap: 18px; overflow-y: auto; }
   .guide[hidden], .step[hidden] { display: none; }
   .measure { margin: 0; padding-left: 18px; display: grid; gap: 18px; text-transform: none; letter-spacing: .02em; line-height: 1.5; }
@@ -240,8 +248,10 @@
   <!-- step 3: sent -->
   <section class="step" id="step-done" hidden>
     <div class="done">
-      <p data-i18n="sent">Order sent</p>
-      <p class="soft" id="done-msg">Thank you. We will message you to confirm the order and send a PayPal link for payment.</p>
+      <svg class="tick" viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="22.5"/><path d="M15 24.5l6 6 12-13"/></svg>
+      <p class="done-title" data-i18n="sent">Order sent</p>
+      <p class="done-no" id="done-no"></p>
+      <p class="soft" id="done-msg"></p>
     </div>
     <div class="stack"><button class="checkout" id="done-close" type="button" data-i18n="continue">Continue</button></div>
   </section>
@@ -306,7 +316,7 @@
       fillIn: "Fill in your name, phone, country and how to reach you",
       notSetUp: "Ordering is being set up. Please try again soon.",
       failed: "The order did not go through. Check your connection and try again.",
-      sent: "Order sent", thanks: "Thank you. We will message you on {m} to confirm the order and send a PayPal link for payment.",
+      sent: "Order sent", orderNo: "Order {no}", thanks: "Thank you! A manager will contact you on {m} to confirm delivery and payment.",
       continue: "Continue",
       sizeGuide: "Size guide", back: "Back",
       step1: "Put a tape measure on your forehead, just above your ears.",
@@ -331,7 +341,7 @@
       fillIn: "Заполните имя, телефон, страну и способ связи",
       notSetUp: "Приём заказов ещё настраивается. Попробуйте позже.",
       failed: "Заказ не отправился. Проверьте интернет и попробуйте ещё раз.",
-      sent: "Заказ отправлен", thanks: "Спасибо! Мы напишем вам в {m}, чтобы подтвердить заказ и прислать ссылку на оплату через PayPal.",
+      sent: "Заказ отправлен", orderNo: "Заказ {no}", thanks: "Спасибо! Менеджер свяжется с вами в {m}, чтобы согласовать доставку и оплату.",
       continue: "Продолжить",
       sizeGuide: "Таблица размеров", back: "Назад",
       step1: "Приложите сантиметровую ленту ко лбу, чуть выше ушей.",
@@ -356,7 +366,7 @@
       fillIn: "Аты-жөніңізді, телефоныңызды, елді және байланыс тәсілін толтырыңыз",
       notSetUp: "Тапсырыс қабылдау әлі бапталуда. Кейінірек қайталап көріңіз.",
       failed: "Тапсырыс жіберілмеді. Интернетті тексеріп, қайталап көріңіз.",
-      sent: "Тапсырыс жіберілді", thanks: "Рақмет! Тапсырысты растап, PayPal арқылы төлем сілтемесін жіберу үшін сізге {m} арқылы жазамыз.",
+      sent: "Тапсырыс жіберілді", orderNo: "Тапсырыс {no}", thanks: "Рақмет! Жеткізу мен төлемді келісу үшін менеджер сізбен {m} арқылы хабарласады.",
       continue: "Жалғастыру",
       sizeGuide: "Өлшем кестесі", back: "Артқа",
       step1: "Сантиметр лентаны маңдайыңызға, құлағыңыздан сәл жоғары қойыңыз.",
@@ -630,7 +640,8 @@
   // through a relay link (ORDER_ENDPOINT) or straight to the bot set in config.js, which defines
   // window.ZHAN_TELEGRAM = { token, chatId } and is added on the host, not kept in this code.
   const ORDER_ENDPOINT = "";
-  const BOT = window.ZHAN_TELEGRAM || null;
+  const ORDER_CHAT = "";         // the Telegram group that receives orders; empty uses the chat in config.js
+  const BOT = window.ZHAN_TELEGRAM ? { ...window.ZHAN_TELEGRAM, chatId: ORDER_CHAT || window.ZHAN_TELEGRAM.chatId } : null;
   const SIZES = [["6 7/8", 54.9], ["7", 55.8], ["7 1/8", 56.8], ["7 1/4", 57.7], ["7 3/8", 58.7], ["7 1/2", 59.6], ["7 5/8", 60.6], ["7 3/4", 61.5]];
 
   const $ = (id) => document.getElementById(id);
@@ -824,6 +835,12 @@
   phone.addEventListener("input", () => { if (same.checked) contact.value = phone.value; });
   const handle = (x) => (x && !x.startsWith("@") && via !== "whatsapp" ? "@" + x : x);
 
+  // e.g. ZH-1105-482: month, day, three random digits
+  function orderNumber() {
+    const n = new Date(), pad = (x) => String(x).padStart(2, "0");
+    return `ZH-${pad(n.getMonth() + 1)}${pad(n.getDate())}-${String(Math.floor(Math.random() * 1000)).padStart(3, "0")}`;
+  }
+
   function orderText(d) {
     const lines = cart.map((l, i) => {
       const c = capOf(l);
@@ -838,7 +855,7 @@
       return [head, ...rows].join("\n");
     });
     return [
-      "New order · ZHAN",
+      `New order ${d.no} · ZHAN`,
       "",
       ...lines,
       `Items: ${total()}`,
@@ -859,7 +876,7 @@
       name: $("f-name").value.trim(), phone: phone.value.trim(),
       country: country.value ? (englishCountry && englishCountry.of(country.value)) || country.value : "",
       via, contact: handle((via === "whatsapp" && same.checked ? phone.value : contact.value).trim()),
-      note: $("f-note").value.trim(),
+      note: $("f-note").value.trim(), no: orderNumber(),
     };
     const bad = [];
     if (d.name.length < 2) bad.push($("f-name"));
@@ -882,7 +899,8 @@
       const out = await res.json().catch(() => ({}));
       if (!res.ok || out.ok === false) throw new Error(out.description || res.status);
       cart = []; save(); renderCart();
-      doneVia = d.via;
+      done = { via: d.via, no: d.no };
+      $("done-no").textContent = t("orderNo", { no: d.no });
       $("done-msg").textContent = t("thanks", { m: VIA[d.via].name });
       $("step-details").reset(); contact.disabled = false;
       for (const k in typed) typed[k] = "";
@@ -897,7 +915,7 @@
   });
   renderCart();
 
-  let doneVia = null;
+  let done = null;
   function applyLang(next) {
     lang = next;
     try { localStorage.setItem("zhan-lang", lang); } catch {}
@@ -911,7 +929,7 @@
     if (current) nameEl.textContent = capName(CAPS[index]);
     $("cart-title").textContent = stepNow === "details" ? t("details") : t("cart");
     $("contact-label").textContent = t(VIA[via].label);
-    if (doneVia) $("done-msg").textContent = t("thanks", { m: VIA[doneVia].name });
+    if (done) { $("done-no").textContent = t("orderNo", { no: done.no }); $("done-msg").textContent = t("thanks", { m: VIA[done.via].name }); }
     $("form-hint").hidden = true;
     buildCountries();
     renderCart();
