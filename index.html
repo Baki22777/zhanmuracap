@@ -56,6 +56,16 @@
   .dot[hidden] { display: none; }
   .dot:hover i { transform: scale(1.12); }
   .dot[aria-checked="true"] i { box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .12), 0 0 0 2px var(--paper), 0 0 0 3px var(--ink); }
+  /* language switch: three small codes at the top right, the current one in ink */
+  .langs {
+    position: fixed; top: calc(14px + env(safe-area-inset-top, 0px)); right: max(16px, env(safe-area-inset-right, 0px));
+    display: flex; gap: 2px; z-index: 4;
+  }
+  .langs button {
+    padding: 8px 6px; border: 0; background: none; font: inherit; letter-spacing: .08em; color: var(--ink-soft); cursor: pointer;
+  }
+  .langs button:hover { color: var(--ink); }
+  .langs button[aria-pressed="true"] { color: var(--ink); text-decoration: underline; text-underline-offset: 4px; text-decoration-thickness: 1px; }
   .logo {
     position: fixed; top: calc(18px + env(safe-area-inset-top, 0px)); left: 50%; transform: translateX(-50%);
     height: 30px; width: auto; pointer-events: none; user-select: none;
@@ -163,47 +173,52 @@
 </style>
 </head>
 <body>
-<canvas id="scene" aria-label="3D cap model, drag to turn it"></canvas>
+<canvas id="scene" aria-label="3D cap model, drag to turn it" data-i18n-aria="canvas"></canvas>
 <img class="logo" src="logo.png" alt="ZHAN">
-<div class="note on" id="note"><span>Loading</span></div>
+<div class="langs" id="langs" role="group" aria-label="Language" data-i18n-aria="language">
+  <button type="button" data-lang="en" lang="en">EN</button>
+  <button type="button" data-lang="ru" lang="ru">RU</button>
+  <button type="button" data-lang="kz" lang="kk">KZ</button>
+</div>
+<div class="note on" id="note"><span data-i18n="loading">Loading</span></div>
 
 
 <div class="foot">
   <p class="name" id="name" aria-live="polite">&nbsp;</p>
   <div class="picker">
-    <div class="kinds" id="kinds" role="tablist" aria-label="Style"></div>
-    <div class="swatches" id="swatches" role="radiogroup" aria-label="Colour"></div>
+    <div class="kinds" id="kinds" role="tablist" aria-label="Style" data-i18n-aria="style"></div>
+    <div class="swatches" id="swatches" role="radiogroup" aria-label="Colour" data-i18n-aria="colour"></div>
   </div>
 </div>
 <p id="spec" hidden></p>
 
 <div class="buy">
-  <button class="add" id="add" type="button" aria-label="Add to cart">+</button>
-  <button class="order" id="order" type="button" aria-label="Open cart">Order<span class="n" id="order-n"></span></button>
+  <button class="add" id="add" type="button" aria-label="Add to cart" data-i18n-aria="add">+</button>
+  <button class="order" id="order" type="button" aria-label="Open cart"><span data-i18n="order">Order</span><span class="n" id="order-n"></span></button>
 </div>
 
 <div class="veil" id="veil" hidden></div>
 <aside class="drawer" id="drawer" role="dialog" aria-modal="true" aria-labelledby="cart-title" hidden>
-  <div class="row"><span id="cart-title">Cart</span><button class="plain" id="cart-close" type="button">Close</button></div>
+  <div class="row"><span id="cart-title">Cart</span><button class="plain" id="cart-close" type="button" data-i18n="close">Close</button></div>
 
   <!-- step 1: what is in the cart, with a size for every fitted cap -->
   <section class="step" id="step-cart">
     <ul class="lines" id="lines"></ul>
     <div class="stack">
-      <div class="row"><span class="soft">Items</span><span id="cart-count">0</span></div>
-      <p class="hint" id="cart-hint" hidden>Pick a size for every cap</p>
-      <button class="checkout" id="to-details" type="button" disabled>Checkout</button>
+      <div class="row"><span class="soft" data-i18n="items">Items</span><span id="cart-count">0</span></div>
+      <p class="hint" id="cart-hint" hidden data-i18n="pickSize">Pick a size for every cap</p>
+      <button class="checkout" id="to-details" type="button" disabled data-i18n="checkout">Checkout</button>
     </div>
   </section>
 
   <!-- step 2: who is ordering -->
   <form class="step" id="step-details" hidden novalidate>
     <div class="fields">
-      <label class="field"><span>Full name</span><input id="f-name" name="name" autocomplete="name" required></label>
-      <label class="field"><span>Phone</span><input id="f-phone" name="phone" type="tel" autocomplete="tel" inputmode="tel" required></label>
-      <label class="field"><span>Ship to</span><select id="f-country" name="country" autocomplete="country" required></select></label>
+      <label class="field"><span data-i18n="fullName">Full name</span><input id="f-name" name="name" autocomplete="name" required></label>
+      <label class="field"><span data-i18n="phone">Phone</span><input id="f-phone" name="phone" type="tel" autocomplete="tel" inputmode="tel" required></label>
+      <label class="field"><span data-i18n="shipTo">Ship to</span><select id="f-country" name="country" autocomplete="country" required></select></label>
       <div class="field">
-        <span id="via-label">Contact me on</span>
+        <span id="via-label" data-i18n="contactOn">Contact me on</span>
         <div class="via" id="via" role="radiogroup" aria-labelledby="via-label">
           <button type="button" role="radio" aria-checked="true" data-via="whatsapp">WhatsApp</button>
           <button type="button" role="radio" aria-checked="false" data-via="telegram">Telegram</button>
@@ -211,38 +226,38 @@
         </div>
       </div>
       <label class="field"><span id="contact-label">WhatsApp number</span><input id="f-contact" name="contact" type="tel" inputmode="tel" autocomplete="off" required></label>
-      <label class="check" id="same-row"><input id="f-same" type="checkbox"> Same as phone</label>
-      <label class="field"><span>Comment <em>optional</em></span><textarea id="f-note" name="note" rows="2"></textarea></label>
+      <label class="check" id="same-row"><input id="f-same" type="checkbox"> <span data-i18n="samePhone">Same as phone</span></label>
+      <label class="field"><span><span data-i18n="comment">Comment</span> <em data-i18n="optional">optional</em></span><textarea id="f-note" name="note" rows="2"></textarea></label>
       <label class="trap" aria-hidden="true">Leave empty<input id="f-trap" name="company" tabindex="-1" autocomplete="off"></label>
     </div>
     <div class="stack">
       <p class="hint" id="form-hint" hidden></p>
-      <button class="checkout" id="send" type="submit">Send order</button>
-      <button class="plain" id="to-cart" type="button">Back to cart</button>
+      <button class="checkout" id="send" type="submit" data-i18n="send">Send order</button>
+      <button class="plain" id="to-cart" type="button" data-i18n="backToCart">Back to cart</button>
     </div>
   </form>
 
   <!-- step 3: sent -->
   <section class="step" id="step-done" hidden>
     <div class="done">
-      <p>Order sent</p>
+      <p data-i18n="sent">Order sent</p>
       <p class="soft" id="done-msg">Thank you. We will message you to confirm the order and send a PayPal link for payment.</p>
     </div>
-    <div class="stack"><button class="checkout" id="done-close" type="button">Continue</button></div>
+    <div class="stack"><button class="checkout" id="done-close" type="button" data-i18n="continue">Continue</button></div>
   </section>
 
   <!-- size guide, over the cart -->
   <section class="guide" id="guide" hidden aria-labelledby="guide-title">
-    <div class="row"><span id="guide-title">Size guide</span><button class="plain" id="guide-close" type="button">Back</button></div>
+    <div class="row"><span id="guide-title" data-i18n="sizeGuide">Size guide</span><button class="plain" id="guide-close" type="button" data-i18n="back">Back</button></div>
     <ol class="measure">
-      <li><img src="guide/step1.jpg" alt="Tape measure placed on the forehead, just above the ear" width="760" height="573" loading="lazy">Put a tape measure on your forehead, just above your ears.</li>
-      <li><img src="guide/step2.jpg" alt="Tape wrapped level around the head, its ends meeting at the side" width="760" height="573" loading="lazy">Wrap it level around your head until it meets the starting point. That number is your head size.</li>
+      <li><img src="guide/step1.jpg" alt="Tape measure placed on the forehead, just above the ear" data-i18n-alt="step1Alt" width="760" height="573" loading="lazy"><span data-i18n="step1">Put a tape measure on your forehead, just above your ears.</span></li>
+      <li><img src="guide/step2.jpg" alt="Tape wrapped level around the head, its ends meeting at the side" data-i18n-alt="step2Alt" width="760" height="573" loading="lazy"><span data-i18n="step2">Wrap it level around your head until it meets the starting point. That number is your head size.</span></li>
     </ol>
     <table class="sizes">
-      <thead><tr><th scope="col">Size (US)</th><th scope="col">Head (cm)</th></tr></thead>
+      <thead><tr><th scope="col" data-i18n="sizeUS">Size (US)</th><th scope="col" data-i18n="headCm">Head (cm)</th></tr></thead>
       <tbody id="size-rows"></tbody>
     </table>
-    <p class="soft small">Between two sizes, take the larger one. 9FORTY caps are adjustable and need no size.</p>
+    <p class="soft small" data-i18n="guideNote">Between two sizes, take the larger one. 9FORTY caps are adjustable and need no size.</p>
   </section>
 </aside>
 
@@ -273,6 +288,101 @@
     { file: "models/scarf_navy.js", colors: ["#1d2b5a", "#eeeeee"], group: "scarf",   name: "Navy Paisley", spec: "Cap with scarf · rhinestone drops" },
     { file: "models/scarf_silver.js", colors: ["#eeeeee", "#1b1b1b"], group: "scarf", name: "Silver", spec: "Cap with satin scarf · pearls" },
   ].map((c) => ({ yaw: FRONT, mirror: false, sized: true, ...c }));
+
+  // ---- languages: English, Russian, Kazakh. Orders always reach the shop in English. ----
+  const I18N = {
+    en: {
+      language: "Language", loading: "Loading", loadFail: "Couldn’t load. Refresh the page", canvas: "3D cap model, drag to turn it",
+      style: "Style", colour: "Colour", cap: "Cap", scarf: "Scarf",
+      add: "Add to cart", order: "Order", openCart: "Open cart, {n} items",
+      cart: "Cart", details: "Your details", close: "Close", items: "Items", pickSize: "Pick a size for every cap",
+      checkout: "Checkout", empty: "Your cart is empty",
+      size: "Size", sizeGuideArrow: "Size guide →", sizeFor: "Size for {name}", sizeForN: "Size for {name}, cap {k}",
+      adjustable: "Adjustable", remove: "Remove", oneLess: "One less {name}", oneMore: "One more {name}",
+      fullName: "Full name", phone: "Phone", shipTo: "Ship to", chooseCountry: "Choose country", popular: "Popular", allCountries: "All countries",
+      contactOn: "Contact me on", waNumber: "WhatsApp number", tgUser: "Telegram username", igUser: "Instagram username",
+      samePhone: "Same as phone", comment: "Comment", optional: "optional",
+      send: "Send order", sending: "Sending", backToCart: "Back to cart",
+      fillIn: "Fill in your name, phone, country and how to reach you",
+      notSetUp: "Ordering is being set up. Please try again soon.",
+      failed: "The order did not go through. Check your connection and try again.",
+      sent: "Order sent", thanks: "Thank you. We will message you on {m} to confirm the order and send a PayPal link for payment.",
+      continue: "Continue",
+      sizeGuide: "Size guide", back: "Back",
+      step1: "Put a tape measure on your forehead, just above your ears.",
+      step2: "Wrap it level around your head until it meets the starting point. That number is your head size.",
+      step1Alt: "Tape measure placed on the forehead, just above the ear",
+      step2Alt: "Tape wrapped level around the head, its ends meeting at the side",
+      sizeUS: "Size (US)", headCm: "Head (cm)",
+      guideNote: "Between two sizes, take the larger one. 9FORTY caps are adjustable and need no size.",
+    },
+    ru: {
+      language: "Язык", loading: "Загрузка", loadFail: "Не загрузилось. Обновите страницу", canvas: "3D-модель кепки, потяните, чтобы повернуть",
+      style: "Вид", colour: "Цвет", cap: "Кепка", scarf: "Платок",
+      add: "В корзину", order: "Заказать", openCart: "Открыть корзину, товаров: {n}",
+      cart: "Корзина", details: "Ваши данные", close: "Закрыть", items: "Товаров", pickSize: "Выберите размер для каждой кепки",
+      checkout: "Оформить", empty: "Корзина пуста",
+      size: "Размер", sizeGuideArrow: "Таблица размеров →", sizeFor: "Размер: {name}", sizeForN: "Размер: {name}, кепка {k}",
+      adjustable: "Регулируется", remove: "Удалить", oneLess: "Убрать одну: {name}", oneMore: "Добавить ещё: {name}",
+      fullName: "ФИО", phone: "Телефон", shipTo: "Страна доставки", chooseCountry: "Выберите страну", popular: "Популярные", allCountries: "Все страны",
+      contactOn: "Связаться со мной через", waNumber: "Номер WhatsApp", tgUser: "Ник в Telegram", igUser: "Ник в Instagram",
+      samePhone: "Как телефон", comment: "Комментарий", optional: "необязательно",
+      send: "Отправить заказ", sending: "Отправляем", backToCart: "Назад в корзину",
+      fillIn: "Заполните имя, телефон, страну и способ связи",
+      notSetUp: "Приём заказов ещё настраивается. Попробуйте позже.",
+      failed: "Заказ не отправился. Проверьте интернет и попробуйте ещё раз.",
+      sent: "Заказ отправлен", thanks: "Спасибо! Мы напишем вам в {m}, чтобы подтвердить заказ и прислать ссылку на оплату через PayPal.",
+      continue: "Продолжить",
+      sizeGuide: "Таблица размеров", back: "Назад",
+      step1: "Приложите сантиметровую ленту ко лбу, чуть выше ушей.",
+      step2: "Оберните ленту ровно вокруг головы, пока она не встретится с началом. Это число — ваш обхват головы.",
+      step1Alt: "Лента приложена ко лбу чуть выше уха",
+      step2Alt: "Лента ровно обёрнута вокруг головы, концы сходятся сбоку",
+      sizeUS: "Размер (США)", headCm: "Обхват (см)",
+      guideNote: "Если вы между двумя размерами, берите больший. Кепки 9FORTY регулируются, размер им не нужен.",
+    },
+    kz: {
+      language: "Тіл", loading: "Жүктелуде", loadFail: "Жүктелмеді. Бетті жаңартыңыз", canvas: "Кепканың 3D үлгісі, бұру үшін тартыңыз",
+      style: "Түрі", colour: "Түсі", cap: "Кепка", scarf: "Орамал",
+      add: "Себетке қосу", order: "Тапсырыс", openCart: "Себетті ашу, тауар: {n}",
+      cart: "Себет", details: "Сіздің деректеріңіз", close: "Жабу", items: "Тауар саны", pickSize: "Әр кепкаға өлшем таңдаңыз",
+      checkout: "Рәсімдеу", empty: "Себет бос",
+      size: "Өлшем", sizeGuideArrow: "Өлшем кестесі →", sizeFor: "Өлшем: {name}", sizeForN: "Өлшем: {name}, {k}-кепка",
+      adjustable: "Реттеледі", remove: "Өшіру", oneLess: "Біреуін азайту: {name}", oneMore: "Тағы біреу: {name}",
+      fullName: "Аты-жөні", phone: "Телефон", shipTo: "Жеткізу елі", chooseCountry: "Елді таңдаңыз", popular: "Танымал", allCountries: "Барлық елдер",
+      contactOn: "Байланыс тәсілі", waNumber: "WhatsApp нөмірі", tgUser: "Telegram логині", igUser: "Instagram логині",
+      samePhone: "Телефонмен бірдей", comment: "Түсініктеме", optional: "міндетті емес",
+      send: "Тапсырысты жіберу", sending: "Жіберілуде", backToCart: "Себетке оралу",
+      fillIn: "Аты-жөніңізді, телефоныңызды, елді және байланыс тәсілін толтырыңыз",
+      notSetUp: "Тапсырыс қабылдау әлі бапталуда. Кейінірек қайталап көріңіз.",
+      failed: "Тапсырыс жіберілмеді. Интернетті тексеріп, қайталап көріңіз.",
+      sent: "Тапсырыс жіберілді", thanks: "Рақмет! Тапсырысты растап, PayPal арқылы төлем сілтемесін жіберу үшін сізге {m} арқылы жазамыз.",
+      continue: "Жалғастыру",
+      sizeGuide: "Өлшем кестесі", back: "Артқа",
+      step1: "Сантиметр лентаны маңдайыңызға, құлағыңыздан сәл жоғары қойыңыз.",
+      step2: "Лентаны бастапқы нүктеге жеткенше басыңызды түзу айналдыра ораңыз. Сол сан — бас шеңберіңіз.",
+      step1Alt: "Лента маңдайға, құлақтан сәл жоғары қойылған",
+      step2Alt: "Лента басты түзу айналып, ұштары бүйірде түйіседі",
+      sizeUS: "Өлшем (АҚШ)", headCm: "Бас шеңбері (см)",
+      guideNote: "Екі өлшемнің арасында болсаңыз, үлкенін алыңыз. 9FORTY кепкалары реттеледі, оларға өлшем керек емес.",
+    },
+  };
+  // model names in Russian and Kazakh; English is each cap's own `name`
+  const NAMES = {
+    "Royal Blue": ["Королевский синий", "Корольдік көк"], "Cream": ["Молочная", "Сүтті"], "Black": ["Чёрная", "Қара"],
+    "Grey": ["Серая", "Сұр"], "Pink": ["Розовая", "Қызғылт"], "Navy": ["Тёмно-синяя", "Қою көк"],
+    "Black Paisley": ["Чёрный пейсли", "Қара пейсли"], "Olive": ["Олива", "Зәйтүн"], "Black Gold": ["Чёрное золото", "Қара алтын"],
+    "Navy Paisley": ["Синий пейсли", "Көк пейсли"], "Silver": ["Серебро", "Күміс"],
+  };
+  const LANGS = ["en", "ru", "kz"];
+  let lang = (() => {
+    try { const saved = localStorage.getItem("zhan-lang"); if (LANGS.includes(saved)) return saved; } catch {}
+    const nav = (navigator.language || "en").toLowerCase();
+    return nav.startsWith("kk") ? "kz" : nav.startsWith("ru") ? "ru" : "en";
+  })();
+  const t = (key, vars = {}) => (I18N[lang][key] ?? I18N.en[key] ?? key).replace(/\{(\w+)\}/g, (_, v) => vars[v] ?? "");
+  const capName = (c) => (lang === "en" ? c.name : NAMES[c.name]?.[lang === "ru" ? 0 : 1] || c.name);
+  const kindName = (id) => t(id);
 
   const canvas = document.getElementById("scene");
   const note = document.getElementById("note");
@@ -434,13 +544,13 @@
     try { holder = await loadCap(index); }
     catch {
       if (my === token) {
-        note.firstChild.textContent = "Couldn’t load. Refresh the page";
+        note.firstChild.textContent = t("loadFail");
       }
       return;
     }
     if (my !== token) return;
     note.classList.remove("on");
-    nameEl.textContent = CAPS[index].name;
+    nameEl.textContent = capName(CAPS[index]);
     specEl.textContent = CAPS[index].spec;
     meta.classList.remove("out");
     // warm the neighbours quietly
@@ -473,23 +583,23 @@
   const kindsEl = document.getElementById("kinds");
   const lastOf = {};             // the colour last picked in each kind, so going back returns to it
   let kind = CAPS[0].group;
-  const tabs = KINDS.map(([id, label]) => {
-    const t = document.createElement("button");
-    t.type = "button"; t.className = "kind"; t.id = `kind-${id}`; t.textContent = label;
-    t.setAttribute("role", "tab");
-    t.addEventListener("click", () => {
+  const tabs = KINDS.map(([id]) => {
+    const tab = document.createElement("button");
+    tab.type = "button"; tab.className = "kind"; tab.id = `kind-${id}`; tab.textContent = kindName(id);
+    tab.setAttribute("role", "tab");
+    tab.addEventListener("click", () => {
       if (id === kind) return;
       const k = lastOf[id] ?? CAPS.findIndex((c) => c.group === id);
       show(k, k > index ? 1 : -1);
     });
-    kindsEl.append(t);
-    return t;
+    kindsEl.append(tab);
+    return tab;
   });
   const dots = CAPS.map((c, k) => {
     const b = document.createElement("button");
     b.type = "button"; b.className = "dot"; b.id = `cap-${k}`;
     b.setAttribute("role", "radio"); b.setAttribute("aria-checked", "false");
-    b.setAttribute("aria-label", c.name); b.title = c.name;
+    b.setAttribute("aria-label", capName(c)); b.title = capName(c);
     b.style.setProperty("--a", c.colors[0]); b.style.setProperty("--b", c.colors[1]);
     b.append(document.createElement("i"));
     b.addEventListener("click", () => { if (k !== index) show(k, k > index ? 1 : -1); });
@@ -499,7 +609,7 @@
   function syncPicker() {
     kind = CAPS[index].group;
     lastOf[kind] = index;
-    tabs.forEach((t, k) => t.setAttribute("aria-selected", String(KINDS[k][0] === kind)));
+    tabs.forEach((tab, k) => tab.setAttribute("aria-selected", String(KINDS[k][0] === kind)));
     dots.forEach((d, k) => { d.hidden = CAPS[k].group !== kind; d.setAttribute("aria-checked", String(k === index)); });
   }
   // keys and taps step through the colours of the kind on show
@@ -553,7 +663,7 @@
     const n = total();
     $("order-n").textContent = n ? n : "";
     $("cart-count").textContent = n;
-    orderEl.setAttribute("aria-label", `Open cart, ${n} item${n === 1 ? "" : "s"}`);
+    orderEl.setAttribute("aria-label", t("openCart", { n }));
     $("to-details").disabled = !n;
     $("cart-hint").hidden = true;
     linesEl.replaceChildren();
@@ -561,7 +671,7 @@
       const li = document.createElement("li");
       li.style.gridTemplateColumns = "1fr";
       const p = document.createElement("p");
-      p.className = "empty"; p.textContent = "Your cart is empty";
+      p.className = "empty"; p.textContent = t("empty");
       li.append(p);
       linesEl.append(li);
       return;
@@ -573,17 +683,17 @@
       sw.className = "swatch"; sw.style.setProperty("--a", c.colors[0]); sw.style.setProperty("--b", c.colors[1]);
       const what = document.createElement("span");
       what.className = "what";
-      const nm = document.createElement("span"); nm.textContent = c.name;
-      const kd = document.createElement("span"); kd.className = "soft"; kd.textContent = KINDS.find(([id]) => id === c.group)[1];
+      const nm = document.createElement("span"); nm.textContent = capName(c);
+      const kd = document.createElement("span"); kd.className = "soft"; kd.textContent = kindName(c.group);
       what.append(nm, kd);
       if (c.sized) {
         const sizes = sizesOf(line);
         const pick = (k) => {
           const sel = document.createElement("select");
           sel.className = "size" + (sizes[k] ? "" : " missing");
-          sel.setAttribute("aria-label", line.qty > 1 ? `Size for ${c.name}, cap ${k + 1}` : `Size for ${c.name}`);
+          sel.setAttribute("aria-label", line.qty > 1 ? t("sizeForN", { name: capName(c), k: k + 1 }) : t("sizeFor", { name: capName(c) }));
           // the last entry opens the size guide instead of picking a size
-          sel.append(new Option("Size", ""), ...SIZES.map(([s, cm]) => new Option(`${s} · ${cm} cm`, s)), new Option("Size guide \u2192", GUIDE));
+          sel.append(new Option(t("size"), ""), ...SIZES.map(([s, cm]) => new Option(`${s} · ${cm} cm`, s)), new Option(t("sizeGuideArrow"), GUIDE));
           sel.value = sizes[k] || "";
           sel.addEventListener("change", () => {
             if (sel.value === GUIDE) { sel.value = sizes[k] || ""; openGuide(sel); return; }
@@ -606,16 +716,16 @@
           what.append(units);
         }
       } else {
-        const one = document.createElement("span"); one.className = "soft"; one.textContent = "Adjustable";
+        const one = document.createElement("span"); one.className = "soft"; one.textContent = t("adjustable");
         what.append(one);
       }
-      const rm = document.createElement("button"); rm.type = "button"; rm.className = "plain"; rm.textContent = "Remove";
+      const rm = document.createElement("button"); rm.type = "button"; rm.className = "plain"; rm.textContent = t("remove");
       rm.addEventListener("click", () => { cart = cart.filter((l) => l !== line); save(); renderCart(); });
       what.append(rm);
       const q = document.createElement("span"); q.className = "qty";
-      const less = document.createElement("button"); less.type = "button"; less.textContent = "−"; less.setAttribute("aria-label", `One less ${c.name}`);
+      const less = document.createElement("button"); less.type = "button"; less.textContent = "−"; less.setAttribute("aria-label", t("oneLess", { name: capName(c) }));
       const num = document.createElement("span"); num.textContent = line.qty;
-      const more = document.createElement("button"); more.type = "button"; more.textContent = "+"; more.setAttribute("aria-label", `One more ${c.name}`);
+      const more = document.createElement("button"); more.type = "button"; more.textContent = "+"; more.setAttribute("aria-label", t("oneMore", { name: capName(c) }));
       less.addEventListener("click", () => { line.qty -= 1; if (line.qty < 1) cart = cart.filter((l) => l !== line); else sizesOf(line); save(); renderCart(); });
       more.addEventListener("click", () => { line.qty = Math.min(20, line.qty + 1); sizesOf(line); save(); renderCart(); });
       q.append(less, num, more);
@@ -624,9 +734,11 @@
     });
   }
 
+  let stepNow = "cart";
   function showStep(name) {
+    stepNow = name;
     for (const [k, el] of Object.entries(steps)) el.hidden = k !== name;
-    $("cart-title").textContent = name === "details" ? "Your details" : "Cart";
+    $("cart-title").textContent = name === "details" ? t("details") : t("cart");
   }
 
   let addedTimer = 0;
@@ -665,24 +777,31 @@
     "UA UG US UY UZ VA VC VE VG VI VN VU WF WS XK YE YT ZA ZM ZW").split(" ");
   const FIRST_COUNTRIES = ["KZ", "RU", "KG", "UZ", "US", "AE", "TR", "DE", "GB"];
   const country = $("f-country");
-  {
-    let names = null;
-    try { names = new Intl.DisplayNames(["en"], { type: "region" }); } catch {}
-    const nameOf = (code) => (names && names.of(code)) || code;
+  const regionNames = (code) => { try { return new Intl.DisplayNames([code], { type: "region" }); } catch { return null; } };
+  const englishCountry = regionNames("en");
+  const KK_COUNTRIES = { KZ: "Қазақстан", RU: "Ресей", KG: "Қырғызстан", UZ: "Өзбекстан", US: "АҚШ", AE: "БАӘ", TR: "Түркия", DE: "Германия", GB: "Ұлыбритания" };
+  function buildCountries() {
+    const keep = country.value;
+    const names = regionNames(lang === "kz" ? "kk" : lang);
+    // some browsers have no Kazakh country names, so the popular ones are spelled out
+    const own = lang === "kz" ? KK_COUNTRIES : {};
+    const nameOf = (code) => own[code] || (names && names.of(code)) || (englishCountry && englishCountry.of(code)) || code;
     const group = (label, codes) => {
       const g = document.createElement("optgroup"); g.label = label;
       g.append(...codes.map((code) => new Option(nameOf(code), code)));
       return g;
     };
-    const rest = COUNTRY_CODES.filter((c) => !FIRST_COUNTRIES.includes(c)).sort((a, b) => nameOf(a).localeCompare(nameOf(b)));
-    country.append(new Option("Choose country", ""), group("Popular", FIRST_COUNTRIES), group("All countries", rest));
+    const rest = COUNTRY_CODES.filter((c) => !FIRST_COUNTRIES.includes(c)).sort((a, b) => nameOf(a).localeCompare(nameOf(b), lang === "kz" ? "kk" : lang));
+    country.replaceChildren(new Option(t("chooseCountry"), ""), group(t("popular"), FIRST_COUNTRIES), group(t("allCountries"), rest));
+    country.value = keep;
   }
+  buildCountries();
 
   // How to reach the buyer: one messenger, and the right kind of handle for it
   const VIA = {
-    whatsapp: { name: "WhatsApp", label: "WhatsApp number", type: "tel", placeholder: "" },
-    telegram: { name: "Telegram", label: "Telegram username", type: "text", placeholder: "@" },
-    instagram: { name: "Instagram", label: "Instagram username", type: "text", placeholder: "@" },
+    whatsapp: { name: "WhatsApp", label: "waNumber", type: "tel", placeholder: "" },
+    telegram: { name: "Telegram", label: "tgUser", type: "text", placeholder: "@" },
+    instagram: { name: "Instagram", label: "igUser", type: "text", placeholder: "@" },
   };
   const phone = $("f-phone"), contact = $("f-contact"), same = $("f-same");
   const typed = { whatsapp: "", telegram: "", instagram: "" }; // what was typed for each, kept when switching
@@ -692,7 +811,7 @@
     via = next;
     const v = VIA[via];
     $("via").querySelectorAll("button").forEach((b) => b.setAttribute("aria-checked", String(b.dataset.via === via)));
-    $("contact-label").textContent = v.label;
+    $("contact-label").textContent = t(v.label);
     contact.type = v.type; contact.inputMode = v.type === "tel" ? "tel" : "text"; contact.placeholder = v.placeholder;
     $("same-row").hidden = via !== "whatsapp";
     if (via !== "whatsapp") { same.checked = false; contact.disabled = false; }
@@ -725,6 +844,7 @@
       `Phone: ${d.phone}`,
       `Ship to: ${d.country}`,
       `Contact via ${VIA[d.via].name}: ${d.contact}`,
+      `Language: ${lang.toUpperCase()}`,
       d.note ? `Comment: ${d.note}` : "",
     ].filter((x, i, a) => x !== "" || a[i - 1] !== "").join("\n").trim();
   }
@@ -734,7 +854,7 @@
     const hint = $("form-hint"), btn = $("send");
     const d = {
       name: $("f-name").value.trim(), phone: phone.value.trim(),
-      country: country.value ? country.selectedOptions[0].textContent : "",
+      country: country.value ? (englishCountry && englishCountry.of(country.value)) || country.value : "",
       via, contact: handle((via === "whatsapp" && same.checked ? phone.value : contact.value).trim()),
       note: $("f-note").value.trim(),
     };
@@ -745,10 +865,10 @@
     const okContact = via === "whatsapp" ? d.contact.replace(/\D/g, "").length >= 7 : d.contact.replace(/^@/, "").length >= 2;
     if (!okContact) bad.push(contact);
     for (const el of [$("f-name"), phone, country, contact]) el.setAttribute("aria-invalid", String(bad.includes(el)));
-    if (bad.length) { hint.textContent = "Fill in your name, phone, country and how to reach you"; hint.hidden = false; bad[0].focus(); return; }
+    if (bad.length) { hint.textContent = t("fillIn"); hint.hidden = false; bad[0].focus(); return; }
     if ($("f-trap").value) return; // a bot filled the hidden field
-    if (!ORDER_ENDPOINT && !(BOT && BOT.token && BOT.chatId)) { hint.textContent = "Ordering is being set up. Please try again soon."; hint.hidden = false; return; }
-    btn.disabled = true; btn.textContent = "Sending"; hint.hidden = true;
+    if (!ORDER_ENDPOINT && !(BOT && BOT.token && BOT.chatId)) { hint.textContent = t("notSetUp"); hint.hidden = false; return; }
+    btn.disabled = true; btn.textContent = t("sending"); hint.hidden = true;
     try {
       // both are simple requests (plain text or form body), so the browser sends no preflight
       const res = ORDER_ENDPOINT
@@ -759,19 +879,42 @@
       const out = await res.json().catch(() => ({}));
       if (!res.ok || out.ok === false) throw new Error(out.description || res.status);
       cart = []; save(); renderCart();
-      $("done-msg").textContent = `Thank you. We will message you on ${VIA[d.via].name} to confirm the order and send a PayPal link for payment.`;
+      doneVia = d.via;
+      $("done-msg").textContent = t("thanks", { m: VIA[d.via].name });
       $("step-details").reset(); contact.disabled = false;
       for (const k in typed) typed[k] = "";
       contact.value = ""; setVia("whatsapp");
       showStep("done"); $("done-close").focus();
     } catch {
-      hint.textContent = "The order did not go through. Check your connection and try again.";
+      hint.textContent = t("failed");
       hint.hidden = false;
     } finally {
-      btn.disabled = false; btn.textContent = "Send order";
+      btn.disabled = false; btn.textContent = t("send");
     }
   });
   renderCart();
+
+  let doneVia = null;
+  function applyLang(next) {
+    lang = next;
+    try { localStorage.setItem("zhan-lang", lang); } catch {}
+    document.documentElement.lang = lang === "kz" ? "kk" : lang;
+    document.querySelectorAll("[data-i18n]").forEach((el) => { el.textContent = t(el.dataset.i18n); });
+    document.querySelectorAll("[data-i18n-aria]").forEach((el) => el.setAttribute("aria-label", t(el.dataset.i18nAria)));
+    document.querySelectorAll("[data-i18n-alt]").forEach((el) => { el.alt = t(el.dataset.i18nAlt); });
+    document.querySelectorAll("#langs button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.lang === lang)));
+    tabs.forEach((tab, k) => { tab.textContent = kindName(KINDS[k][0]); });
+    dots.forEach((d, k) => { d.setAttribute("aria-label", capName(CAPS[k])); d.title = capName(CAPS[k]); });
+    if (current) nameEl.textContent = capName(CAPS[index]);
+    $("cart-title").textContent = stepNow === "details" ? t("details") : t("cart");
+    $("contact-label").textContent = t(VIA[via].label);
+    if (doneVia) $("done-msg").textContent = t("thanks", { m: VIA[doneVia].name });
+    $("form-hint").hidden = true;
+    buildCountries();
+    renderCart();
+  }
+  $("langs").addEventListener("click", (e) => { const b = e.target.closest("button[data-lang]"); if (b && b.dataset.lang !== lang) applyLang(b.dataset.lang); });
+  applyLang(lang);
 
   function resize() {
     const w = innerWidth, h = innerHeight;
