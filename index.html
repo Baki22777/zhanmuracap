@@ -490,9 +490,10 @@
 
   // ---- cart and checkout ----
   // "+" puts the cap on stage in the cart; ORDER opens it. The cart lives in this browser only.
-  // Checkout collects name, phone, WhatsApp and Instagram and sends the order to Telegram.
-  // Fill these in to switch sending on: the bot's token from @BotFather and the chat that receives orders.
-  const TELEGRAM = { token: "", chatId: "" };
+  // Checkout collects name, phone, WhatsApp and Instagram and posts the order to a Google Apps Script
+  // web app, which keeps the Telegram bot's token out of this public page and forwards the order.
+  // Paste the web app's /exec link here to switch sending on.
+  const ORDER_ENDPOINT = "";
   const SIZES = [["6 7/8", 54.9], ["7", 55.8], ["7 1/8", 56.8], ["7 1/4", 57.7], ["7 3/8", 58.7], ["7 1/2", 59.6], ["7 5/8", 60.6], ["7 3/4", 61.5]];
 
   const $ = (id) => document.getElementById(id);
@@ -635,13 +636,11 @@
     for (const el of [$("f-name"), phone, wa]) el.setAttribute("aria-invalid", String(bad.includes(el)));
     if (bad.length) { hint.textContent = "Fill in your name, phone and WhatsApp"; hint.hidden = false; bad[0].focus(); return; }
     if ($("f-trap").value) return; // a bot filled the hidden field
-    if (!TELEGRAM.token || !TELEGRAM.chatId) { hint.textContent = "Ordering is being set up. Please try again soon."; hint.hidden = false; return; }
+    if (!ORDER_ENDPOINT) { hint.textContent = "Ordering is being set up. Please try again soon."; hint.hidden = false; return; }
     btn.disabled = true; btn.textContent = "Sending"; hint.hidden = true;
     try {
-      // a plain form post: Telegram accepts it from a web page without a preflight
-      const res = await fetch(`https://api.telegram.org/bot${TELEGRAM.token}/sendMessage`, {
-        method: "POST", body: new URLSearchParams({ chat_id: TELEGRAM.chatId, text: orderText(d) }),
-      });
+      // sent as plain text, so the browser makes a simple request with no preflight
+      const res = await fetch(ORDER_ENDPOINT, { method: "POST", body: JSON.stringify({ site: "zhan", text: orderText(d) }) });
       const out = await res.json().catch(() => ({}));
       if (!res.ok || out.ok === false) throw new Error(out.description || res.status);
       cart = []; save(); renderCart();
