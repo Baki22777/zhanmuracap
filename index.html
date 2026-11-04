@@ -640,7 +640,7 @@
   // through a relay link (ORDER_ENDPOINT) or straight to the bot set in config.js, which defines
   // window.ZHAN_TELEGRAM = { token, chatId } and is added on the host, not kept in this code.
   const ORDER_ENDPOINT = "";
-  const ORDER_CHAT = "";         // the Telegram group that receives orders; empty uses the chat in config.js
+  const ORDER_CHAT = "-5394743171"; // Telegram group "Cap orders"; empty would use the chat in config.js
   const BOT = window.ZHAN_TELEGRAM ? { ...window.ZHAN_TELEGRAM, chatId: ORDER_CHAT || window.ZHAN_TELEGRAM.chatId } : null;
   const SIZES = [["6 7/8", 54.9], ["7", 55.8], ["7 1/8", 56.8], ["7 1/4", 57.7], ["7 3/8", 58.7], ["7 1/2", 59.6], ["7 5/8", 60.6], ["7 3/4", 61.5]];
 
