@@ -113,6 +113,20 @@
   }
   .field input:focus, .field textarea:focus { border-bottom-color: var(--ink); }
   .field input[aria-invalid="true"] { border-bottom-color: #b00020; }
+  .field select {
+    font: inherit; font-size: 16px; letter-spacing: normal; text-transform: none; color: var(--ink);
+    padding: 8px 0; border: 0; border-bottom: 1px solid #d9d9d9; border-radius: 0; background: none; outline: none;
+  }
+  .field select:focus { border-bottom-color: var(--ink); }
+  .field select[aria-invalid="true"] { border-bottom-color: #b00020; }
+  .via { display: flex; gap: 6px; }
+  .via button {
+    flex: 1; padding: 10px 0; border: 1px solid #e5e5e5; background: var(--paper); color: var(--ink);
+    font: inherit; letter-spacing: inherit; text-transform: inherit; cursor: pointer; transition: background .2s ease, color .2s ease, border-color .2s ease;
+  }
+  .via button:hover { border-color: var(--ink); }
+  .via button[aria-checked="true"] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+  #same-row[hidden] { display: none; }
   .check { display: flex; align-items: center; gap: 8px; color: var(--ink-soft); cursor: pointer; }
   .check input { margin: 0; accent-color: var(--ink); }
   .trap { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
@@ -183,9 +197,17 @@
     <div class="fields">
       <label class="field"><span>Full name</span><input id="f-name" name="name" autocomplete="name" required></label>
       <label class="field"><span>Phone</span><input id="f-phone" name="phone" type="tel" autocomplete="tel" inputmode="tel" required></label>
-      <label class="field"><span>WhatsApp</span><input id="f-wa" name="whatsapp" type="tel" inputmode="tel" required></label>
-      <label class="check"><input id="f-same" type="checkbox"> Same as phone</label>
-      <label class="field"><span>Instagram <em>optional</em></span><input id="f-ig" name="instagram" autocomplete="off" placeholder="@"></label>
+      <label class="field"><span>Ship to</span><select id="f-country" name="country" autocomplete="country" required></select></label>
+      <div class="field">
+        <span id="via-label">Contact me on</span>
+        <div class="via" id="via" role="radiogroup" aria-labelledby="via-label">
+          <button type="button" role="radio" aria-checked="true" data-via="whatsapp">WhatsApp</button>
+          <button type="button" role="radio" aria-checked="false" data-via="telegram">Telegram</button>
+          <button type="button" role="radio" aria-checked="false" data-via="instagram">Instagram</button>
+        </div>
+      </div>
+      <label class="field"><span id="contact-label">WhatsApp number</span><input id="f-contact" name="contact" type="tel" inputmode="tel" autocomplete="off" required></label>
+      <label class="check" id="same-row"><input id="f-same" type="checkbox"> Same as phone</label>
       <label class="field"><span>Comment <em>optional</em></span><textarea id="f-note" name="note" rows="2"></textarea></label>
       <label class="trap" aria-hidden="true">Leave empty<input id="f-trap" name="company" tabindex="-1" autocomplete="off"></label>
     </div>
@@ -201,7 +223,7 @@
   <section class="step" id="step-done" hidden>
     <div class="done">
       <p>Order sent</p>
-      <p class="soft">Thank you. We will message you on WhatsApp to confirm the order and send a PayPal link for payment.</p>
+      <p class="soft" id="done-msg">Thank you. We will message you to confirm the order and send a PayPal link for payment.</p>
     </div>
     <div class="stack"><button class="checkout" id="done-close" type="button">Continue</button></div>
   </section>
@@ -491,7 +513,7 @@
 
   // ---- cart and checkout ----
   // "+" puts the cap on stage in the cart; ORDER opens it. The cart lives in this browser only.
-  // Checkout collects name, phone, WhatsApp and Instagram and sends the order to Telegram, either
+  // Checkout collects name, phone, shipping country and how to reach the buyer, and sends the order to Telegram, either
   // through a relay link (ORDER_ENDPOINT) or straight to the bot set in config.js, which defines
   // window.ZHAN_TELEGRAM = { token, chatId } and is added on the host, not kept in this code.
   const ORDER_ENDPOINT = "";
@@ -599,10 +621,54 @@
   $("to-cart").addEventListener("click", () => showStep("cart"));
   $("done-close").addEventListener("click", closeCart);
 
+  // Shipping country: a few likely ones first, then every country by name
+  const COUNTRY_CODES = ("AD AE AF AG AI AL AM AO AR AS AT AU AW AX AZ BA BB BD BE BF BG BH BI BJ BL BM BN BO BQ BR BS BT BW BY BZ CA CC CD CF CG " +
+    "CH CI CK CL CM CN CO CR CU CV CW CX CY CZ DE DJ DK DM DO DZ EC EE EG ER ES ET FI FJ FK FM FO FR GA GB GD GE GF GG GH GI GL GM GN GP GQ " +
+    "GR GT GU GW GY HK HN HR HT HU ID IE IL IM IN IQ IR IS IT JE JM JO JP KE KG KH KI KM KN KR KW KY KZ LA LB LC LI LK LR LS LT LU LV LY MA " +
+    "MC MD ME MF MG MH MK ML MM MN MO MP MQ MR MS MT MU MV MW MX MY MZ NA NC NE NF NG NI NL NO NP NR NU NZ OM PA PE PF PG PH PK PL PM PN PR " +
+    "PS PT PW PY QA RE RO RS RU RW SA SB SC SD SE SG SH SI SK SL SM SN SO SR SS ST SV SX SY SZ TC TD TG TH TJ TK TL TM TN TO TR TT TV TW TZ " +
+    "UA UG US UY UZ VA VC VE VG VI VN VU WF WS XK YE YT ZA ZM ZW").split(" ");
+  const FIRST_COUNTRIES = ["KZ", "RU", "KG", "UZ", "US", "AE", "TR", "DE", "GB"];
+  const country = $("f-country");
+  {
+    let names = null;
+    try { names = new Intl.DisplayNames(["en"], { type: "region" }); } catch {}
+    const nameOf = (code) => (names && names.of(code)) || code;
+    const group = (label, codes) => {
+      const g = document.createElement("optgroup"); g.label = label;
+      g.append(...codes.map((code) => new Option(nameOf(code), code)));
+      return g;
+    };
+    const rest = COUNTRY_CODES.filter((c) => !FIRST_COUNTRIES.includes(c)).sort((a, b) => nameOf(a).localeCompare(nameOf(b)));
+    country.append(new Option("Choose country", ""), group("Popular", FIRST_COUNTRIES), group("All countries", rest));
+  }
+
+  // How to reach the buyer: one messenger, and the right kind of handle for it
+  const VIA = {
+    whatsapp: { name: "WhatsApp", label: "WhatsApp number", type: "tel", placeholder: "" },
+    telegram: { name: "Telegram", label: "Telegram username", type: "text", placeholder: "@" },
+    instagram: { name: "Instagram", label: "Instagram username", type: "text", placeholder: "@" },
+  };
+  const phone = $("f-phone"), contact = $("f-contact"), same = $("f-same");
+  const typed = { whatsapp: "", telegram: "", instagram: "" }; // what was typed for each, kept when switching
+  let via = "whatsapp";
+  function setVia(next) {
+    typed[via] = same.checked && via === "whatsapp" ? "" : contact.value;
+    via = next;
+    const v = VIA[via];
+    $("via").querySelectorAll("button").forEach((b) => b.setAttribute("aria-checked", String(b.dataset.via === via)));
+    $("contact-label").textContent = v.label;
+    contact.type = v.type; contact.inputMode = v.type === "tel" ? "tel" : "text"; contact.placeholder = v.placeholder;
+    $("same-row").hidden = via !== "whatsapp";
+    if (via !== "whatsapp") { same.checked = false; contact.disabled = false; }
+    contact.value = typed[via];
+    contact.setAttribute("aria-invalid", "false");
+  }
+  $("via").addEventListener("click", (e) => { const b = e.target.closest("button[data-via]"); if (b) setVia(b.dataset.via); });
   // WhatsApp can copy the phone number
-  const phone = $("f-phone"), wa = $("f-wa"), same = $("f-same");
-  same.addEventListener("change", () => { wa.disabled = same.checked; if (same.checked) wa.value = phone.value; });
-  phone.addEventListener("input", () => { if (same.checked) wa.value = phone.value; });
+  same.addEventListener("change", () => { contact.disabled = same.checked; if (same.checked) contact.value = phone.value; });
+  phone.addEventListener("input", () => { if (same.checked) contact.value = phone.value; });
+  const handle = (x) => (x && !x.startsWith("@") && via !== "whatsapp" ? "@" + x : x);
 
   function orderText(d) {
     const lines = cart.map((l, i) => {
@@ -618,8 +684,8 @@
       "",
       `Name: ${d.name}`,
       `Phone: ${d.phone}`,
-      `WhatsApp: ${d.whatsapp}`,
-      `Instagram: ${d.instagram || "-"}`,
+      `Ship to: ${d.country}`,
+      `Contact via ${VIA[d.via].name}: ${d.contact}`,
       d.note ? `Comment: ${d.note}` : "",
     ].filter((x, i, a) => x !== "" || a[i - 1] !== "").join("\n").trim();
   }
@@ -628,15 +694,19 @@
     e.preventDefault();
     const hint = $("form-hint"), btn = $("send");
     const d = {
-      name: $("f-name").value.trim(), phone: phone.value.trim(), whatsapp: (same.checked ? phone.value : wa.value).trim(),
-      instagram: $("f-ig").value.trim(), note: $("f-note").value.trim(),
+      name: $("f-name").value.trim(), phone: phone.value.trim(),
+      country: country.value ? country.selectedOptions[0].textContent : "",
+      via, contact: handle((via === "whatsapp" && same.checked ? phone.value : contact.value).trim()),
+      note: $("f-note").value.trim(),
     };
     const bad = [];
     if (d.name.length < 2) bad.push($("f-name"));
     if (d.phone.replace(/\D/g, "").length < 7) bad.push(phone);
-    if (d.whatsapp.replace(/\D/g, "").length < 7) bad.push(wa);
-    for (const el of [$("f-name"), phone, wa]) el.setAttribute("aria-invalid", String(bad.includes(el)));
-    if (bad.length) { hint.textContent = "Fill in your name, phone and WhatsApp"; hint.hidden = false; bad[0].focus(); return; }
+    if (!d.country) bad.push(country);
+    const okContact = via === "whatsapp" ? d.contact.replace(/\D/g, "").length >= 7 : d.contact.replace(/^@/, "").length >= 2;
+    if (!okContact) bad.push(contact);
+    for (const el of [$("f-name"), phone, country, contact]) el.setAttribute("aria-invalid", String(bad.includes(el)));
+    if (bad.length) { hint.textContent = "Fill in your name, phone, country and how to reach you"; hint.hidden = false; bad[0].focus(); return; }
     if ($("f-trap").value) return; // a bot filled the hidden field
     if (!ORDER_ENDPOINT && !(BOT && BOT.token && BOT.chatId)) { hint.textContent = "Ordering is being set up. Please try again soon."; hint.hidden = false; return; }
     btn.disabled = true; btn.textContent = "Sending"; hint.hidden = true;
@@ -650,7 +720,10 @@
       const out = await res.json().catch(() => ({}));
       if (!res.ok || out.ok === false) throw new Error(out.description || res.status);
       cart = []; save(); renderCart();
-      $("step-details").reset(); wa.disabled = false;
+      $("done-msg").textContent = `Thank you. We will message you on ${VIA[d.via].name} to confirm the order and send a PayPal link for payment.`;
+      $("step-details").reset(); contact.disabled = false;
+      for (const k in typed) typed[k] = "";
+      contact.value = ""; setVia("whatsapp");
       showStep("done"); $("done-close").focus();
     } catch {
       hint.textContent = "The order did not go through. Check your connection and try again.";
