@@ -225,7 +225,7 @@
       <label class="field"><span data-i18n="fullName">Full name</span><input id="f-name" name="name" autocomplete="name" required></label>
       <label class="field"><span data-i18n="phone">Phone</span><input id="f-phone" name="phone" type="tel" autocomplete="tel" inputmode="tel" required></label>
       <label class="field"><span data-i18n="shipTo">Ship to</span><select id="f-country" name="country" autocomplete="country" required></select></label>
-      <label class="field"><span data-i18n="city">City</span><input id="f-city" name="city" list="city-list" autocomplete="address-level2" required data-i18n-ph="cityPh" placeholder="Choose or type"><datalist id="city-list"></datalist></label>
+      <label class="field"><span data-i18n="city">City</span><input id="f-city" name="city" autocomplete="address-level2" required data-i18n-ph="cityPh" placeholder="Type your city"></label>
       <div class="field">
         <span id="via-label" data-i18n="contactOn">Contact me on</span>
         <div class="via" id="via" role="radiogroup" aria-labelledby="via-label">
@@ -310,7 +310,7 @@
       checkout: "Checkout", empty: "Your cart is empty",
       size: "Size", sizeGuideArrow: "Size guide →", sizeFor: "Size for {name}", sizeForN: "Size for {name}, cap {k}",
       adjustable: "Adjustable", remove: "Remove", oneLess: "One less {name}", oneMore: "One more {name}",
-      fullName: "Full name", phone: "Phone", shipTo: "Ship to", city: "City", cityPh: "Choose or type", chooseCountry: "Choose country", popular: "Popular", allCountries: "All countries",
+      fullName: "Full name", phone: "Phone", shipTo: "Ship to", city: "City", cityPh: "Type your city", chooseCountry: "Choose country", popular: "Popular", allCountries: "All countries",
       contactOn: "Contact me on", waNumber: "WhatsApp number", tgUser: "Telegram username", igUser: "Instagram username",
       samePhone: "Same as phone", comment: "Comment", optional: "optional",
       send: "Send order", sending: "Sending", backToCart: "Back to cart",
@@ -335,7 +335,7 @@
       checkout: "Оформить", empty: "Корзина пуста",
       size: "Размер", sizeGuideArrow: "Таблица размеров →", sizeFor: "Размер: {name}", sizeForN: "Размер: {name}, кепка {k}",
       adjustable: "Регулируется", remove: "Удалить", oneLess: "Убрать одну: {name}", oneMore: "Добавить ещё: {name}",
-      fullName: "ФИО", phone: "Телефон", shipTo: "Страна доставки", city: "Город", cityPh: "Выберите или впишите", chooseCountry: "Выберите страну", popular: "Популярные", allCountries: "Все страны",
+      fullName: "ФИО", phone: "Телефон", shipTo: "Страна доставки", city: "Город", cityPh: "Впишите ваш город", chooseCountry: "Выберите страну", popular: "Популярные", allCountries: "Все страны",
       contactOn: "Связаться со мной через", waNumber: "Номер WhatsApp", tgUser: "Ник в Telegram", igUser: "Ник в Instagram",
       samePhone: "Как телефон", comment: "Комментарий", optional: "необязательно",
       send: "Отправить заказ", sending: "Отправляем", backToCart: "Назад в корзину",
@@ -360,7 +360,7 @@
       checkout: "Рәсімдеу", empty: "Себет бос",
       size: "Өлшем", sizeGuideArrow: "Өлшем кестесі →", sizeFor: "Өлшем: {name}", sizeForN: "Өлшем: {name}, {k}-кепка",
       adjustable: "Реттеледі", remove: "Өшіру", oneLess: "Біреуін азайту: {name}", oneMore: "Тағы біреу: {name}",
-      fullName: "Аты-жөні", phone: "Телефон", shipTo: "Жеткізу елі", city: "Қала", cityPh: "Таңдаңыз немесе жазыңыз", chooseCountry: "Елді таңдаңыз", popular: "Танымал", allCountries: "Барлық елдер",
+      fullName: "Аты-жөні", phone: "Телефон", shipTo: "Жеткізу елі", city: "Қала", cityPh: "Қалаңызды жазыңыз", chooseCountry: "Елді таңдаңыз", popular: "Танымал", allCountries: "Барлық елдер",
       contactOn: "Байланыс тәсілі", waNumber: "WhatsApp нөмірі", tgUser: "Telegram логині", igUser: "Instagram логині",
       samePhone: "Телефонмен бірдей", comment: "Түсініктеме", optional: "міндетті емес",
       send: "Тапсырысты жіберу", sending: "Жіберілуде", backToCart: "Себетке оралу",
@@ -809,29 +809,7 @@
   }
   buildCountries();
 
-  const CITIES = {
-    KZ: [["Almaty", "Алматы", "Алматы"], ["Astana", "Астана", "Астана"], ["Shymkent", "Шымкент", "Шымкент"], ["Karaganda", "Караганда", "Қарағанды"],
-         ["Aktobe", "Актобе", "Ақтөбе"], ["Taraz", "Тараз", "Тараз"], ["Pavlodar", "Павлодар", "Павлодар"], ["Oskemen", "Усть-Каменогорск", "Өскемен"],
-         ["Semey", "Семей", "Семей"], ["Atyrau", "Атырау", "Атырау"], ["Kostanay", "Костанай", "Қостанай"], ["Kyzylorda", "Кызылорда", "Қызылорда"],
-         ["Oral", "Уральск", "Орал"], ["Petropavl", "Петропавловск", "Петропавл"], ["Aktau", "Актау", "Ақтау"], ["Turkistan", "Туркестан", "Түркістан"],
-         ["Taldykorgan", "Талдыкорган", "Талдықорған"], ["Kokshetau", "Кокшетау", "Көкшетау"], ["Ekibastuz", "Экибастуз", "Екібастұз"], ["Zhezkazgan", "Жезказган", "Жезқазған"]],
-    RU: [["Moscow", "Москва", "Мәскеу"], ["Saint Petersburg", "Санкт-Петербург", "Санкт-Петербург"], ["Novosibirsk", "Новосибирск", "Новосібір"],
-         ["Yekaterinburg", "Екатеринбург", "Екатеринбург"], ["Kazan", "Казань", "Қазан"], ["Nizhny Novgorod", "Нижний Новгород", "Нижний Новгород"],
-         ["Chelyabinsk", "Челябинск", "Челябі"], ["Samara", "Самара", "Самара"], ["Omsk", "Омск", "Омбы"], ["Rostov-on-Don", "Ростов-на-Дону", "Ростов-на-Дону"],
-         ["Ufa", "Уфа", "Уфа"], ["Krasnoyarsk", "Красноярск", "Красноярск"], ["Krasnodar", "Краснодар", "Краснодар"], ["Perm", "Пермь", "Пермь"],
-         ["Voronezh", "Воронеж", "Воронеж"], ["Volgograd", "Волгоград", "Волгоград"]],
-    KG: [["Bishkek", "Бишкек", "Бішкек"], ["Osh", "Ош", "Ош"], ["Jalal-Abad", "Джалал-Абад", "Жалалабат"], ["Karakol", "Каракол", "Қарақол"], ["Tokmok", "Токмок", "Тоқмақ"]],
-    UZ: [["Tashkent", "Ташкент", "Ташкент"], ["Samarkand", "Самарканд", "Самарқанд"], ["Bukhara", "Бухара", "Бұхара"], ["Namangan", "Наманган", "Наманган"],
-         ["Andijan", "Андижан", "Әндіжан"], ["Fergana", "Фергана", "Ферғана"]],
-  };
   const city = $("f-city");
-  // suggestions follow the chosen country and the page language; any other city can be typed
-  function fillCities() {
-    const col = { en: 0, ru: 1, kz: 2 }[lang];
-    $("city-list").replaceChildren(...(CITIES[country.value] || []).map((c) => new Option(c[col])));
-  }
-  country.addEventListener("change", fillCities);
-  fillCities();
 
   // How to reach the buyer: one messenger, and the right kind of handle for it
   const VIA = {
@@ -960,7 +938,6 @@
     if (done) { $("done-no").textContent = t("orderNo", { no: done.no }); $("done-msg").textContent = t("thanks", { m: VIA[done.via].name }); }
     $("form-hint").hidden = true;
     buildCountries();
-    fillCities();
     renderCart();
   }
   $("langs").addEventListener("click", (e) => { const b = e.target.closest("button[data-lang]"); if (b && b.dataset.lang !== lang) applyLang(b.dataset.lang); });
