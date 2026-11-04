@@ -221,6 +221,7 @@
   </section>
 </aside>
 
+<script src="config.js"></script>
 <script type="importmap">
 { "imports": {
   "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
@@ -490,10 +491,11 @@
 
   // ---- cart and checkout ----
   // "+" puts the cap on stage in the cart; ORDER opens it. The cart lives in this browser only.
-  // Checkout collects name, phone, WhatsApp and Instagram and posts the order to a Google Apps Script
-  // web app, which keeps the Telegram bot's token out of this public page and forwards the order.
-  // Paste the web app's /exec link here to switch sending on.
+  // Checkout collects name, phone, WhatsApp and Instagram and sends the order to Telegram, either
+  // through a relay link (ORDER_ENDPOINT) or straight to the bot set in config.js, which defines
+  // window.ZHAN_TELEGRAM = { token, chatId } and is added on the host, not kept in this code.
   const ORDER_ENDPOINT = "";
+  const BOT = window.ZHAN_TELEGRAM || null;
   const SIZES = [["6 7/8", 54.9], ["7", 55.8], ["7 1/8", 56.8], ["7 1/4", 57.7], ["7 3/8", 58.7], ["7 1/2", 59.6], ["7 5/8", 60.6], ["7 3/4", 61.5]];
 
   const $ = (id) => document.getElementById(id);
@@ -636,11 +638,15 @@
     for (const el of [$("f-name"), phone, wa]) el.setAttribute("aria-invalid", String(bad.includes(el)));
     if (bad.length) { hint.textContent = "Fill in your name, phone and WhatsApp"; hint.hidden = false; bad[0].focus(); return; }
     if ($("f-trap").value) return; // a bot filled the hidden field
-    if (!ORDER_ENDPOINT) { hint.textContent = "Ordering is being set up. Please try again soon."; hint.hidden = false; return; }
+    if (!ORDER_ENDPOINT && !(BOT && BOT.token && BOT.chatId)) { hint.textContent = "Ordering is being set up. Please try again soon."; hint.hidden = false; return; }
     btn.disabled = true; btn.textContent = "Sending"; hint.hidden = true;
     try {
-      // sent as plain text, so the browser makes a simple request with no preflight
-      const res = await fetch(ORDER_ENDPOINT, { method: "POST", body: JSON.stringify({ site: "zhan", text: orderText(d) }) });
+      // both are simple requests (plain text or form body), so the browser sends no preflight
+      const res = ORDER_ENDPOINT
+        ? await fetch(ORDER_ENDPOINT, { method: "POST", body: JSON.stringify({ site: "zhan", text: orderText(d) }) })
+        : await fetch(`https://api.telegram.org/bot${BOT.token}/sendMessage`, {
+            method: "POST", body: new URLSearchParams({ chat_id: BOT.chatId, text: orderText(d) }),
+          });
       const out = await res.json().catch(() => ({}));
       if (!res.ok || out.ok === false) throw new Error(out.description || res.status);
       cart = []; save(); renderCart();
