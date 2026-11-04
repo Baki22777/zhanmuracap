@@ -96,6 +96,38 @@
   .empty { margin: 0; color: var(--ink-soft); }
   .checkout { width: 100%; padding: 16px 0; border: 0; background: var(--ink); color: var(--paper); font: inherit; font-size: 12px; letter-spacing: .16em; text-transform: inherit; opacity: .35; }
 
+  .step { display: grid; grid-template-rows: 1fr auto; gap: 18px; min-height: 0; }
+  .stack { display: grid; gap: 14px; }
+  .drawer { grid-template-rows: auto 1fr; }
+  .lines .size { font: inherit; letter-spacing: inherit; text-transform: none; font-size: 11px; padding: 3px 4px; border: 1px solid #e5e5e5; background: var(--paper); color: var(--ink); justify-self: start; }
+  .lines .size.missing { border-color: var(--ink); }
+  .link { justify-self: start; text-decoration: underline; text-underline-offset: 3px; }
+  .hint { margin: 0; color: var(--ink); }
+  .small { margin: 0; font-size: 10px; line-height: 1.5; text-transform: none; letter-spacing: .02em; }
+  .fields { display: grid; gap: 14px; align-content: start; overflow-y: auto; }
+  .field { display: grid; gap: 6px; }
+  .field em { font-style: normal; color: var(--ink-soft); }
+  .field input, .field textarea {
+    font: inherit; font-size: 16px; letter-spacing: normal; text-transform: none; color: var(--ink);
+    padding: 8px 0; border: 0; border-bottom: 1px solid #d9d9d9; border-radius: 0; background: none; outline: none; resize: vertical;
+  }
+  .field input:focus, .field textarea:focus { border-bottom-color: var(--ink); }
+  .field input[aria-invalid="true"] { border-bottom-color: #b00020; }
+  .check { display: flex; align-items: center; gap: 8px; color: var(--ink-soft); cursor: pointer; }
+  .check input { margin: 0; accent-color: var(--ink); }
+  .trap { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+  .checkout:not(:disabled) { opacity: 1; cursor: pointer; }
+  .checkout:not(:disabled):hover { opacity: .82; }
+  .done { display: grid; gap: 10px; align-content: start; }
+  .done p { margin: 0; }
+  .done .soft { text-transform: none; letter-spacing: .02em; line-height: 1.5; }
+  .guide { position: absolute; inset: 0; background: var(--paper); padding: inherit; display: grid; align-content: start; gap: 18px; overflow-y: auto; }
+  .guide[hidden], .step[hidden] { display: none; }
+  .measure { margin: 0; padding-left: 18px; display: grid; gap: 8px; text-transform: none; letter-spacing: .02em; line-height: 1.5; }
+  .sizes { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+  .sizes th { text-align: left; font-weight: 400; color: var(--ink-soft); padding: 0 0 8px; }
+  .sizes td { padding: 10px 0; border-top: 1px solid #efefef; }
+
   @media (max-width: 720px) {
     .logo { height: 24px; }
     .foot { grid-template-columns: 1fr; padding-bottom: calc(94px + env(safe-area-inset-bottom, 0px)); }
@@ -134,11 +166,59 @@
 <div class="veil" id="veil" hidden></div>
 <aside class="drawer" id="drawer" role="dialog" aria-modal="true" aria-labelledby="cart-title" hidden>
   <div class="row"><span id="cart-title">Cart</span><button class="plain" id="cart-close" type="button">Close</button></div>
-  <ul class="lines" id="lines"></ul>
-  <div style="display: grid; gap: 14px;">
-    <div class="row"><span class="soft">Items</span><span id="cart-count">0</span></div>
-    <button class="checkout" type="button" disabled>Checkout soon</button>
-  </div>
+
+  <!-- step 1: what is in the cart, with a size for every fitted cap -->
+  <section class="step" id="step-cart">
+    <ul class="lines" id="lines"></ul>
+    <div class="stack">
+      <button class="plain link" id="guide-open" type="button">Size guide</button>
+      <div class="row"><span class="soft">Items</span><span id="cart-count">0</span></div>
+      <p class="hint" id="cart-hint" hidden>Pick a size for every cap</p>
+      <button class="checkout" id="to-details" type="button" disabled>Checkout</button>
+    </div>
+  </section>
+
+  <!-- step 2: who is ordering -->
+  <form class="step" id="step-details" hidden novalidate>
+    <div class="fields">
+      <label class="field"><span>Full name</span><input id="f-name" name="name" autocomplete="name" required></label>
+      <label class="field"><span>Phone</span><input id="f-phone" name="phone" type="tel" autocomplete="tel" inputmode="tel" required></label>
+      <label class="field"><span>WhatsApp</span><input id="f-wa" name="whatsapp" type="tel" inputmode="tel" required></label>
+      <label class="check"><input id="f-same" type="checkbox"> Same as phone</label>
+      <label class="field"><span>Instagram <em>optional</em></span><input id="f-ig" name="instagram" autocomplete="off" placeholder="@"></label>
+      <label class="field"><span>Comment <em>optional</em></span><textarea id="f-note" name="note" rows="2"></textarea></label>
+      <label class="trap" aria-hidden="true">Leave empty<input id="f-trap" name="company" tabindex="-1" autocomplete="off"></label>
+    </div>
+    <div class="stack">
+      <p class="hint" id="form-hint" hidden></p>
+      <p class="soft small">We confirm every order by message and send a PayPal link to pay.</p>
+      <button class="checkout" id="send" type="submit">Send order</button>
+      <button class="plain" id="to-cart" type="button">Back to cart</button>
+    </div>
+  </form>
+
+  <!-- step 3: sent -->
+  <section class="step" id="step-done" hidden>
+    <div class="done">
+      <p>Order sent</p>
+      <p class="soft">Thank you. We will message you on WhatsApp to confirm the order and send a PayPal link for payment.</p>
+    </div>
+    <div class="stack"><button class="checkout" id="done-close" type="button">Continue</button></div>
+  </section>
+
+  <!-- size guide, over the cart -->
+  <section class="guide" id="guide" hidden aria-labelledby="guide-title">
+    <div class="row"><span id="guide-title">Size guide</span><button class="plain" id="guide-close" type="button">Back</button></div>
+    <ol class="measure">
+      <li>Put a tape measure just above your ears.</li>
+      <li>Wrap it level around your head until it meets the starting point. That number is your head size.</li>
+    </ol>
+    <table class="sizes">
+      <thead><tr><th scope="col">Size (US)</th><th scope="col">Head (cm)</th></tr></thead>
+      <tbody id="size-rows"></tbody>
+    </table>
+    <p class="soft small">Between two sizes, take the larger one. 9FORTY caps are adjustable and need no size.</p>
+  </section>
 </aside>
 
 <script type="importmap">
@@ -159,14 +239,14 @@
     { file: "models/cream.js", colors: ["#ebe7dc", "#141414"], group: "cap",  name: "Cream", spec: "59FIFTY · black lace, beads · Yankees", cut: [[0.52, -0.066, -0.35, 1, 0.3, 0.35]] },
     { file: "models/black.js", colors: ["#141414", "#efe9da"], group: "cap",  name: "Black", spec: "59FIFTY · white lace, pearls · Laura 17", cut: [[0.52, -0.066, -0.35, 1, 0.3, 0.35], [0.56, -0.25, -0.35, 1, -0.066, 0.35]] },
     { file: "models/grey.js", colors: ["#b9babd", "#a8c3dc"], group: "cap",   name: "Grey", spec: "59FIFTY · pale blue lace, pearls" },
-    { file: "models/pink.js", colors: ["#f2a6c8", "#dcdcdc"], group: "cap",   name: "Pink", spec: "9FORTY · rhinestones, distressed brim" },
-    { file: "models/navy.js", colors: ["#1f2a44", "#e9e1cc"], group: "cap",   name: "Navy", spec: "9FORTY · white lace, pearls" },
+    { file: "models/pink.js", colors: ["#f2a6c8", "#dcdcdc"], group: "cap", sized: false, name: "Pink", spec: "9FORTY · rhinestones, distressed brim" },
+    { file: "models/navy.js", colors: ["#1f2a44", "#e9e1cc"], group: "cap", sized: false, name: "Navy", spec: "9FORTY · white lace, pearls" },
     { file: "models/scarf_bw.js", colors: ["#1b1b1b", "#bdbdbd"], group: "scarf",     name: "Black Paisley", spec: "Cap with silk scarf · rhinestones" },
     { file: "models/scarf_olive.js", colors: ["#55682f", "#e0a23a"], group: "scarf",  name: "Olive", spec: "Cap with satin scarf · rhinestone NY" },
     { file: "models/scarf_gold.js", colors: ["#151515", "#c99a3a"], group: "scarf",   name: "Black Gold", spec: "Cap with satin scarf · rhinestones" },
     { file: "models/scarf_navy.js", colors: ["#1d2b5a", "#eeeeee"], group: "scarf",   name: "Navy Paisley", spec: "Cap with scarf · rhinestone drops" },
     { file: "models/scarf_silver.js", colors: ["#eeeeee", "#1b1b1b"], group: "scarf", name: "Silver", spec: "Cap with satin scarf · pearls" },
-  ].map((c) => ({ yaw: FRONT, mirror: false, ...c }));
+  ].map((c) => ({ yaw: FRONT, mirror: false, sized: true, ...c }));
 
   const canvas = document.getElementById("scene");
   const note = document.getElementById("note");
@@ -403,24 +483,42 @@
     show(same[(at + delta + same.length) % same.length], delta);
   }
   addEventListener("keydown", (e) => {
-    if (!drawer.hidden) { if (e.key === "Escape") closeCart(); return; }
+    if (!drawer.hidden) { if (e.key === "Escape") { if (!$("guide").hidden) $("guide").hidden = true; else closeCart(); } return; }
     if (e.key === "ArrowLeft") step(-1);
     if (e.key === "ArrowRight") step(1);
   });
 
-  // ---- cart: ORDER puts the cap on stage in it; kept in this browser only; checkout is not wired up yet ----
-  const veil = document.getElementById("veil"), drawer = document.getElementById("drawer");
-  const linesEl = document.getElementById("lines"), orderEl = document.getElementById("order"), addEl = document.getElementById("add");
-  let cart = [];                 // [{ file, qty }], keyed by model file so it survives reordering CAPS
+  // ---- cart and checkout ----
+  // "+" puts the cap on stage in the cart; ORDER opens it. The cart lives in this browser only.
+  // Checkout collects name, phone, WhatsApp and Instagram and sends the order to Telegram.
+  // Fill these in to switch sending on: the bot's token from @BotFather and the chat that receives orders.
+  const TELEGRAM = { token: "", chatId: "" };
+  const SIZES = [["6 7/8", 54.9], ["7", 55.8], ["7 1/8", 56.8], ["7 1/4", 57.7], ["7 3/8", 58.7], ["7 1/2", 59.6], ["7 5/8", 60.6], ["7 3/4", 61.5]];
+
+  const $ = (id) => document.getElementById(id);
+  const veil = $("veil"), drawer = $("drawer");
+  const linesEl = $("lines"), orderEl = $("order"), addEl = $("add");
+  const steps = { cart: $("step-cart"), details: $("step-details"), done: $("step-done") };
+  let cart = [];                 // [{ file, qty, size }], keyed by model file so it survives reordering CAPS
   try { cart = JSON.parse(localStorage.getItem("zhan-cart") || "[]").filter((l) => CAPS.some((c) => c.file === l.file)); } catch { cart = []; }
   const save = () => { try { localStorage.setItem("zhan-cart", JSON.stringify(cart)); } catch {} };
   const total = () => cart.reduce((n, l) => n + l.qty, 0);
+  const capOf = (line) => CAPS.find((x) => x.file === line.file);
+  const missingSize = () => cart.some((l) => capOf(l).sized && !l.size);
+
+  $("size-rows").append(...SIZES.map(([s, cm]) => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td>${s}</td><td>${cm.toFixed(1)}</td>`;
+    return tr;
+  }));
 
   function renderCart() {
     const n = total();
-    document.getElementById("order-n").textContent = n ? n : "";
-    document.getElementById("cart-count").textContent = n;
+    $("order-n").textContent = n ? n : "";
+    $("cart-count").textContent = n;
     orderEl.setAttribute("aria-label", `Open cart, ${n} item${n === 1 ? "" : "s"}`);
+    $("to-details").disabled = !n;
+    $("cart-hint").hidden = true;
     linesEl.replaceChildren();
     if (!cart.length) {
       const li = document.createElement("li");
@@ -432,7 +530,7 @@
       return;
     }
     cart.forEach((line) => {
-      const c = CAPS.find((x) => x.file === line.file);
+      const c = capOf(line);
       const li = document.createElement("li");
       const sw = document.createElement("span");
       sw.className = "swatch"; sw.style.setProperty("--a", c.colors[0]); sw.style.setProperty("--b", c.colors[1]);
@@ -440,9 +538,22 @@
       what.className = "what";
       const nm = document.createElement("span"); nm.textContent = c.name;
       const kd = document.createElement("span"); kd.className = "soft"; kd.textContent = KINDS.find(([id]) => id === c.group)[1];
+      what.append(nm, kd);
+      if (c.sized) {
+        const sel = document.createElement("select");
+        sel.className = "size" + (line.size ? "" : " missing");
+        sel.setAttribute("aria-label", `Size for ${c.name}`);
+        sel.append(new Option("Size", ""), ...SIZES.map(([s, cm]) => new Option(`${s} · ${cm} cm`, s)));
+        sel.value = line.size || "";
+        sel.addEventListener("change", () => { line.size = sel.value; save(); renderCart(); });
+        what.append(sel);
+      } else {
+        const one = document.createElement("span"); one.className = "soft"; one.textContent = "Adjustable";
+        what.append(one);
+      }
       const rm = document.createElement("button"); rm.type = "button"; rm.className = "plain"; rm.textContent = "Remove";
       rm.addEventListener("click", () => { cart = cart.filter((l) => l !== line); save(); renderCart(); });
-      what.append(nm, kd, rm);
+      what.append(rm);
       const q = document.createElement("span"); q.className = "qty";
       const less = document.createElement("button"); less.type = "button"; less.textContent = "−"; less.setAttribute("aria-label", `One less ${c.name}`);
       const num = document.createElement("span"); num.textContent = line.qty;
@@ -455,22 +566,94 @@
     });
   }
 
+  function showStep(name) {
+    for (const [k, el] of Object.entries(steps)) el.hidden = k !== name;
+    $("cart-title").textContent = name === "details" ? "Your details" : "Cart";
+  }
+
   let addedTimer = 0;
   addEl.addEventListener("click", () => {
     const file = CAPS[index].file;
     const line = cart.find((l) => l.file === file);
-    if (line) line.qty = Math.min(20, line.qty + 1); else cart.push({ file, qty: 1 });
+    if (line) line.qty = Math.min(20, line.qty + 1); else cart.push({ file, qty: 1, size: "" });
     save(); renderCart();
     // the plus answers with a tick for a moment
-    addEl.textContent = "\u2713";
+    addEl.textContent = "✓";
     clearTimeout(addedTimer);
     addedTimer = setTimeout(() => { addEl.textContent = "+"; }, 900);
   });
-  function openCart() { veil.hidden = false; drawer.hidden = false; document.getElementById("cart-close").focus(); }
-  function closeCart() { veil.hidden = true; drawer.hidden = true; orderEl.focus(); }
+  function openCart() { showStep("cart"); renderCart(); veil.hidden = false; drawer.hidden = false; $("cart-close").focus(); }
+  function closeCart() { veil.hidden = true; drawer.hidden = true; $("guide").hidden = true; orderEl.focus(); }
   orderEl.addEventListener("click", openCart);
-  document.getElementById("cart-close").addEventListener("click", closeCart);
+  $("cart-close").addEventListener("click", closeCart);
   veil.addEventListener("click", closeCart);
+  $("guide-open").addEventListener("click", () => { $("guide").hidden = false; $("guide-close").focus(); });
+  $("guide-close").addEventListener("click", () => { $("guide").hidden = true; $("guide-open").focus(); });
+  $("to-details").addEventListener("click", () => {
+    if (missingSize()) { $("cart-hint").hidden = false; linesEl.querySelector(".size.missing")?.focus(); return; }
+    showStep("details"); $("f-name").focus();
+  });
+  $("to-cart").addEventListener("click", () => showStep("cart"));
+  $("done-close").addEventListener("click", closeCart);
+
+  // WhatsApp can copy the phone number
+  const phone = $("f-phone"), wa = $("f-wa"), same = $("f-same");
+  same.addEventListener("change", () => { wa.disabled = same.checked; if (same.checked) wa.value = phone.value; });
+  phone.addEventListener("input", () => { if (same.checked) wa.value = phone.value; });
+
+  function orderText(d) {
+    const lines = cart.map((l, i) => {
+      const c = capOf(l);
+      const kind = KINDS.find(([id]) => id === c.group)[1];
+      return `${i + 1}. ${c.name} (${kind}) · ${c.sized ? "size " + l.size : "adjustable"} · x${l.qty}`;
+    });
+    return [
+      "New order · ZHAN",
+      "",
+      ...lines,
+      `Items: ${total()}`,
+      "",
+      `Name: ${d.name}`,
+      `Phone: ${d.phone}`,
+      `WhatsApp: ${d.whatsapp}`,
+      `Instagram: ${d.instagram || "-"}`,
+      d.note ? `Comment: ${d.note}` : "",
+    ].filter((x, i, a) => x !== "" || a[i - 1] !== "").join("\n").trim();
+  }
+
+  $("step-details").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const hint = $("form-hint"), btn = $("send");
+    const d = {
+      name: $("f-name").value.trim(), phone: phone.value.trim(), whatsapp: (same.checked ? phone.value : wa.value).trim(),
+      instagram: $("f-ig").value.trim(), note: $("f-note").value.trim(),
+    };
+    const bad = [];
+    if (d.name.length < 2) bad.push($("f-name"));
+    if (d.phone.replace(/\D/g, "").length < 7) bad.push(phone);
+    if (d.whatsapp.replace(/\D/g, "").length < 7) bad.push(wa);
+    for (const el of [$("f-name"), phone, wa]) el.setAttribute("aria-invalid", String(bad.includes(el)));
+    if (bad.length) { hint.textContent = "Fill in your name, phone and WhatsApp"; hint.hidden = false; bad[0].focus(); return; }
+    if ($("f-trap").value) return; // a bot filled the hidden field
+    if (!TELEGRAM.token || !TELEGRAM.chatId) { hint.textContent = "Ordering is being set up. Please try again soon."; hint.hidden = false; return; }
+    btn.disabled = true; btn.textContent = "Sending"; hint.hidden = true;
+    try {
+      // a plain form post: Telegram accepts it from a web page without a preflight
+      const res = await fetch(`https://api.telegram.org/bot${TELEGRAM.token}/sendMessage`, {
+        method: "POST", body: new URLSearchParams({ chat_id: TELEGRAM.chatId, text: orderText(d) }),
+      });
+      const out = await res.json().catch(() => ({}));
+      if (!res.ok || out.ok === false) throw new Error(out.description || res.status);
+      cart = []; save(); renderCart();
+      $("step-details").reset(); wa.disabled = false;
+      showStep("done"); $("done-close").focus();
+    } catch {
+      hint.textContent = "The order did not go through. Check your connection and try again.";
+      hint.hidden = false;
+    } finally {
+      btn.disabled = false; btn.textContent = "Send order";
+    }
+  });
   renderCart();
 
   function resize() {
