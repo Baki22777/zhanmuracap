@@ -185,7 +185,6 @@
   <section class="step" id="step-cart">
     <ul class="lines" id="lines"></ul>
     <div class="stack">
-      <button class="plain link" id="guide-open" type="button">Size guide</button>
       <div class="row"><span class="soft">Items</span><span id="cart-count">0</span></div>
       <p class="hint" id="cart-hint" hidden>Pick a size for every cap</p>
       <button class="checkout" id="to-details" type="button" disabled>Checkout</button>
@@ -213,7 +212,6 @@
     </div>
     <div class="stack">
       <p class="hint" id="form-hint" hidden></p>
-      <p class="soft small">We confirm every order by message and send a PayPal link to pay.</p>
       <button class="checkout" id="send" type="submit">Send order</button>
       <button class="plain" id="to-cart" type="button">Back to cart</button>
     </div>
@@ -568,9 +566,13 @@
         const sel = document.createElement("select");
         sel.className = "size" + (line.size ? "" : " missing");
         sel.setAttribute("aria-label", `Size for ${c.name}`);
-        sel.append(new Option("Size", ""), ...SIZES.map(([s, cm]) => new Option(`${s} · ${cm} cm`, s)));
+        // the last entry opens the size guide instead of picking a size
+        sel.append(new Option("Size", ""), ...SIZES.map(([s, cm]) => new Option(`${s} · ${cm} cm`, s)), new Option("Size guide →", GUIDE));
         sel.value = line.size || "";
-        sel.addEventListener("change", () => { line.size = sel.value; save(); renderCart(); });
+        sel.addEventListener("change", () => {
+          if (sel.value === GUIDE) { sel.value = line.size || ""; openGuide(sel); return; }
+          line.size = sel.value; save(); renderCart();
+        });
         what.append(sel);
       } else {
         const one = document.createElement("span"); one.className = "soft"; one.textContent = "Adjustable";
@@ -612,8 +614,10 @@
   orderEl.addEventListener("click", openCart);
   $("cart-close").addEventListener("click", closeCart);
   veil.addEventListener("click", closeCart);
-  $("guide-open").addEventListener("click", () => { $("guide").hidden = false; $("guide-close").focus(); });
-  $("guide-close").addEventListener("click", () => { $("guide").hidden = true; $("guide-open").focus(); });
+  const GUIDE = "guide";
+  let guideFrom = null;          // the size list that opened the guide, so focus goes back to it
+  function openGuide(from) { guideFrom = from; $("guide").hidden = false; $("guide-close").focus(); }
+  $("guide-close").addEventListener("click", () => { $("guide").hidden = true; guideFrom?.focus(); });
   $("to-details").addEventListener("click", () => {
     if (missingSize()) { $("cart-hint").hidden = false; linesEl.querySelector(".size.missing")?.focus(); return; }
     showStep("details"); $("f-name").focus();
